@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
     uint256 public baseTokenPrice; // Initial token price in wei
-    uint256 public constant PRICE_INCREMENT_PER_TOKEN = 1_000_000 wei; // Price increment per token in wei
+    uint256 public constant PRICE_INCREMENT_PER_TOKEN =  0.001 ether; // Price increment per token in wei
 
     event TokensPurchased(address indexed buyer, uint256 amount, uint256 cost);
     event TokensSold(address indexed seller, uint256 amount, uint256 revenue);
@@ -28,20 +28,15 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
         _acceptedToken = IERC1363(address(this));
     }
 
-    function buy(uint256 _ethAmount) external payable {
-        require(_ethAmount > 0, "Amount must be greater than zero");
+    function buy(uint256 _amount) external payable {
+        require(_amount > 0, "Amount must be greater than zero");
 
-        uint256 cost = calculatePurchaseReturn(_ethAmount);
-        require(msg.value >= cost, "Insufficient funds");
+        uint256 cost = calculatePurchaseReturn(_amount);
+        require(msg.value == cost, "Invalid purchase funds sent");
 
-        _mint(msg.sender, _ethAmount);
+        _mint(_msgSender(), _amount);
 
-        emit TokensPurchased(msg.sender, _ethAmount, cost);
-
-        // Refund any excess funds
-        if (msg.value > cost) {
-            payable(msg.sender).transfer(msg.value - cost);
-        }
+        emit TokensPurchased(msg.sender, cost, cost);
     }
 
     function sell(uint256 _tokenAmount) public {
@@ -50,7 +45,7 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
 
         uint256 revenue = calculateSaleReturn(_tokenAmount);
 
-        _burn(address(this), _tokenAmount);
+        _burn(_msgSender(), _tokenAmount);
 
         emit TokensSold(msg.sender, _tokenAmount, revenue);
 
@@ -77,6 +72,10 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
         revenue = _tokenAmount * (priceBeforeSell + priceAfterSell) / 2;
     }
 
+    function getCurrentPrice() public view returns (uint256 currentPrice) {
+        currentPrice = getPriceForSupply(totalSupply());
+    }
+
     function getPriceForSupply(uint256 _supply) public view returns (uint256 priceBasedOnSupply) {
         priceBasedOnSupply = baseTokenPrice + (_supply * PRICE_INCREMENT_PER_TOKEN);
     }
@@ -94,7 +93,4 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
 
         return IERC1363Receiver.onTransferReceived.selector;
     }
-
-    // Fallback function to accept ether
-    receive() external payable {}
 }
