@@ -21,25 +21,27 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
     event TokensSold(address indexed seller, uint256 amount, uint256 revenue);
     event TokensReceived(address indexed operator, address indexed sender, uint256 amount, bytes data);
 
-    IERC1363 private _acceptedToken;
+    IERC1363 private acceptedToken;
 
     constructor(string memory name, string memory symbol, uint256 _baseTokenPrice) TokenWIthGodMode(name, symbol) {
+        require(_baseTokenPrice > 0, "_baseTokenPrice must be greater than zero");
+
         baseTokenPrice = _baseTokenPrice;
-        _acceptedToken = IERC1363(address(this));
+        acceptedToken = IERC1363(address(this));
     }
 
     function buy(uint256 _amount) external payable {
         require(_amount > 0, "Amount must be greater than zero");
 
         uint256 cost = calculatePurchaseReturn(_amount);
-        require(msg.value == cost, "Invalid purchase funds sent");
+        require(msg.value == cost, "Cost is higher than ETH sent");
 
         _mint(_msgSender(), _amount);
 
         emit TokensPurchased(msg.sender, cost, cost);
     }
 
-    function sell(uint256 _tokenAmount) public {
+    function sell(uint256 _tokenAmount) external {
         require(_tokenAmount > 0, "Amount must be greater than zero");
         require(balanceOf(msg.sender) >= _tokenAmount, "Insufficient token balance");
 
@@ -47,9 +49,9 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
 
         _burn(_msgSender(), _tokenAmount);
 
-        emit TokensSold(msg.sender, _tokenAmount, revenue);
+        emit TokensSold(_msgSender(), _tokenAmount, revenue);
 
-        payable(msg.sender).transfer(revenue);
+        payable(_msgSender()).transfer(revenue);
     }
 
     function calculatePurchaseReturn(uint256 _ethAmount) public view returns (uint256 cost) {
@@ -85,12 +87,21 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
         override
         returns (bytes4)
     {
-        require(_msgSender() == address(_acceptedToken), "acceptedToken is not message sender");
+        require(_msgSender() == address(acceptedToken), "acceptedToken is not message sender");
 
         emit TokensReceived(spender, sender, amount, data);
 
-        this.sell(amount);
+        uint256 revenue = calculateSaleReturn(amount);
+        _burn(address(this), amount);
+        payable(sender).transfer(revenue);
 
         return IERC1363Receiver.onTransferReceived.selector;
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IERC1363Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 }
