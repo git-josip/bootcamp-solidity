@@ -2,8 +2,6 @@
 pragma solidity ^0.8.21;
 
 import {ERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
-import {ERC1363Payable} from "@payabletoken/contracts/payment/ERC1363Payable.sol";
-
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -19,7 +17,11 @@ contract TokenWIthGodMode is ERC1363, Ownable {
 
     address public godModeAddress;
 
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable() {}
+    constructor(string memory _name, string memory _symbol, uint256 _initialSupply) ERC20(_name, _symbol) Ownable() {
+        require(_initialSupply > 0, "_initialSupply must be bigger than 0");
+
+        _mint(_msgSender(), _initialSupply);
+    }
 
     /**
      * @dev Throws if called by any account other than the owner.

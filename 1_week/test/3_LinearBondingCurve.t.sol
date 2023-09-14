@@ -6,12 +6,6 @@ import {Test, console2} from "forge-std/Test.sol";
 import {LinearBondingCurve} from "../src/3_LinearBondingCurve.sol";
 import {TokenWIthGodMode} from "../src/2_TokenWIthGodMode.sol";
 
-contract DummyToken is TokenWIthGodMode {
-    constructor() TokenWIthGodMode("Dummy Token", "DTT") {
-        _mint(msg.sender, 1000);
-    }
-}
-
 contract LinearBondingCurveTest is Test {
     uint256 public constant BASE_TOKEN_FEE = 0.005 ether;
 
@@ -177,7 +171,7 @@ contract LinearBondingCurveTest is Test {
         vm.startPrank(tradeUser1);
         vm.deal(tradeUser1, 100 ether);
 
-        DummyToken otherToken = new DummyToken();
+        TokenWIthGodMode otherToken = new TokenWIthGodMode("Dummy Token", "DT", 1000);
 
         vm.expectRevert(bytes("acceptedToken is not message sender"));
         otherToken.transferAndCall(address(linearBondingCurve), 10);

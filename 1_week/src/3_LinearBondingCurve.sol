@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {TokenWIthGodMode} from "./2_TokenWIthGodMode.sol";
+import {ERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {IERC1363Receiver, IERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -13,8 +13,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice This contract implements a basic linear bonding curve with a constant price increment.
  *  Users can buy and sell tokens, and the price increases or decreases linearly with each transaction.
  */
-contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
-    uint256 public baseTokenPrice; // Initial token price in wei
+contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
+    uint256 public baseTokenPriceInWei;
     uint256 public constant PRICE_INCREMENT_PER_TOKEN = 0.001 ether; // Price increment per token in wei
 
     event TokensPurchased(address indexed buyer, uint256 amount, uint256 cost);
@@ -23,10 +23,10 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
 
     IERC1363 private acceptedToken;
 
-    constructor(string memory name, string memory symbol, uint256 _baseTokenPrice) TokenWIthGodMode(name, symbol) {
-        require(_baseTokenPrice > 0, "_baseTokenPrice must be greater than zero");
+    constructor(string memory name, string memory symbol, uint256 _baseTokenPriceInWei) ERC20(name, symbol) {
+        require(_baseTokenPriceInWei > 0, "_baseTokenPrice must be greater than zero");
 
-        baseTokenPrice = _baseTokenPrice;
+        baseTokenPriceInWei = _baseTokenPriceInWei;
         acceptedToken = IERC1363(address(this));
     }
 
@@ -104,7 +104,7 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
      * @param _supply Provided custom tokens supply
      */
     function getPriceForSupply(uint256 _supply) public view returns (uint256 priceBasedOnSupply) {
-        priceBasedOnSupply = baseTokenPrice + (_supply * PRICE_INCREMENT_PER_TOKEN);
+        priceBasedOnSupply = baseTokenPriceInWei + (_supply * PRICE_INCREMENT_PER_TOKEN);
     }
 
     /**
