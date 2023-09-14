@@ -57,7 +57,7 @@ contract TokenWithSanctions is ERC1363, Ownable {
      */
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20) {
         super._beforeTokenTransfer(from, to, amount);
-        
+
         require(sanctionedAddresses[from] == false, "Address from is sanctioned.");
         require(sanctionedAddresses[to] == false, "Address to is sanctioned.");
     }
