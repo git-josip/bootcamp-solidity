@@ -48,10 +48,10 @@ contract LinearBondingCurveTest is Test {
         );
         assertEq(0, linearBondingCurve.totalSupply(), "Total supply needs to be 0 on start");
 
-        uint256 calculatedPriceForTokenBuy = linearBondingCurve.calculatePurchaseReturn(1);
+        uint256 calculatedPriceForTokenBuy = linearBondingCurve.calculatePurchaseCost(1);
         assertEq(0.0055 ether, calculatedPriceForTokenBuy, "Price for buying 1 token on start is nont correct.");
 
-        linearBondingCurve.buy{value: linearBondingCurve.calculatePurchaseReturn(1)}(1);
+        linearBondingCurve.buy{value: linearBondingCurve.calculatePurchaseCost(1)}(1);
 
         assertEq(
             calculatedPriceForTokenBuy,
@@ -72,7 +72,7 @@ contract LinearBondingCurveTest is Test {
         vm.startPrank(tradeUser1);
         vm.deal(tradeUser1, 10 ether);
 
-        uint256 calculatedPriceForTokenBuy = linearBondingCurve.calculatePurchaseReturn(1);
+        uint256 calculatedPriceForTokenBuy = linearBondingCurve.calculatePurchaseCost(1);
         linearBondingCurve.buy{value: calculatedPriceForTokenBuy}(1);
 
         // test execution
@@ -93,17 +93,17 @@ contract LinearBondingCurveTest is Test {
         vm.startPrank(tradeUser1);
         vm.deal(tradeUser1, 100 ether);
 
-        uint256 numberOfTOkensToBuy1 = 134;
-        uint256 calculatedPriceForTokenBuy1 = linearBondingCurve.calculatePurchaseReturn(numberOfTOkensToBuy1);
-        linearBondingCurve.buy{value: calculatedPriceForTokenBuy1}(numberOfTOkensToBuy1);
+        uint256 numberOfTokensToBuy1 = 134;
+        uint256 calculatedPriceForTokenBuy1 = linearBondingCurve.calculatePurchaseCost(numberOfTokensToBuy1);
+        linearBondingCurve.buy{value: calculatedPriceForTokenBuy1}(numberOfTokensToBuy1);
 
-        uint256 numberOfTOkensToBuy2 = 116;
-        uint256 calculatedPriceForTokenBuy2 = linearBondingCurve.calculatePurchaseReturn(numberOfTOkensToBuy2);
-        linearBondingCurve.buy{value: calculatedPriceForTokenBuy2}(numberOfTOkensToBuy2);
+        uint256 numberOfTokensToBuy2 = 116;
+        uint256 calculatedPriceForTokenBuy2 = linearBondingCurve.calculatePurchaseCost(numberOfTokensToBuy2);
+        linearBondingCurve.buy{value: calculatedPriceForTokenBuy2}(numberOfTokensToBuy2);
 
         // test execution
         assertEq(
-            numberOfTOkensToBuy1 + numberOfTOkensToBuy2,
+            numberOfTokensToBuy1 + numberOfTokensToBuy2,
             linearBondingCurve.balanceOf(tradeUser1),
             "User balance after selling tokens needs to be summ of all previous purchases."
         );
@@ -113,7 +113,7 @@ contract LinearBondingCurveTest is Test {
             "User ETH balance after purchase needs to be decreased by amount paid for all purchase."
         );
         assertEq(
-            numberOfTOkensToBuy1 + numberOfTOkensToBuy2,
+            numberOfTokensToBuy1 + numberOfTokensToBuy2,
             linearBondingCurve.totalSupply(),
             "Total supply increased by number of tokens minted."
         );
@@ -124,30 +124,30 @@ contract LinearBondingCurveTest is Test {
         vm.startPrank(tradeUser1);
         vm.deal(tradeUser1, 100 ether);
 
-        uint256 numberOfTOkensToBuy1 = 134;
-        uint256 calculatedPriceForTokenBuy1 = linearBondingCurve.calculatePurchaseReturn(numberOfTOkensToBuy1);
-        linearBondingCurve.buy{value: calculatedPriceForTokenBuy1}(numberOfTOkensToBuy1);
+        uint256 numberOfTokensToBuy1 = 134;
+        uint256 calculatedPriceForTokenBuy1 = linearBondingCurve.calculatePurchaseCost(numberOfTokensToBuy1);
+        linearBondingCurve.buy{value: calculatedPriceForTokenBuy1}(numberOfTokensToBuy1);
 
-        uint256 numberOfTOkensToBuy2 = 116;
-        uint256 calculatedPriceForTokenBuy2 = linearBondingCurve.calculatePurchaseReturn(numberOfTOkensToBuy2);
-        linearBondingCurve.buy{value: calculatedPriceForTokenBuy2}(numberOfTOkensToBuy2);
+        uint256 numberOfTokensToBuy2 = 116;
+        uint256 calculatedPriceForTokenBuy2 = linearBondingCurve.calculatePurchaseCost(numberOfTokensToBuy2);
+        linearBondingCurve.buy{value: calculatedPriceForTokenBuy2}(numberOfTokensToBuy2);
         assertEq(
-            numberOfTOkensToBuy1 + numberOfTOkensToBuy2,
+            numberOfTokensToBuy1 + numberOfTokensToBuy2,
             linearBondingCurve.totalSupply(),
             "Total supply increased by number of tokens minted."
         );
 
         // test execution
         console.log("Curve token balance after buy %s", address(linearBondingCurve).balance);
-        linearBondingCurve.transferAndCall(address(linearBondingCurve), numberOfTOkensToBuy1);
+        linearBondingCurve.transferAndCall(address(linearBondingCurve), numberOfTokensToBuy1);
 
         assertEq(
-            numberOfTOkensToBuy2,
+            numberOfTokensToBuy2,
             linearBondingCurve.balanceOf(tradeUser1),
             "User balance after selling tokens is not correct."
         );
         assertEq(
-            numberOfTOkensToBuy2, linearBondingCurve.totalSupply(), "Total supply increased by number of tokens minted."
+            numberOfTokensToBuy2, linearBondingCurve.totalSupply(), "Total supply increased by number of tokens minted."
         );
     }
 
@@ -156,11 +156,11 @@ contract LinearBondingCurveTest is Test {
         vm.startPrank(tradeUser1);
         vm.deal(tradeUser1, 100 ether);
 
-        uint256 numberOfTOkensToBuy1 = 134;
-        uint256 calculatedPriceForTokenBuy1 = linearBondingCurve.calculatePurchaseReturn(numberOfTOkensToBuy1);
+        uint256 numberOfTokensToBuy1 = 134;
+        uint256 calculatedPriceForTokenBuy1 = linearBondingCurve.calculatePurchaseCost(numberOfTokensToBuy1);
 
         vm.expectRevert(bytes("Cost is higher than ETH sent"));
-        linearBondingCurve.buy{value: calculatedPriceForTokenBuy1 + 1 gwei}(numberOfTOkensToBuy1);
+        linearBondingCurve.buy{value: calculatedPriceForTokenBuy1 + 1 gwei}(numberOfTokensToBuy1);
     }
 
     function test_IfSellIsExecutedWhenThereIsNoEnoughBalanceTransactionShouldFail() public {

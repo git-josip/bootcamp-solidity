@@ -30,17 +30,27 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
         acceptedToken = IERC1363(address(this));
     }
 
-    function buy(uint256 _amount) external payable {
-        require(_amount > 0, "Amount must be greater than zero");
+    /**
+     * @notice Executes token purchase based on sent ETH
+     * @dev ETH value sent needs to be equal to amount which function calculatePurchaseCost returns
+     * @param _tokenAmount amount of tokens to purchase
+     */
+    function buy(uint256 _tokenAmount) external payable {
+        require(_tokenAmount > 0, "Amount must be greater than zero");
 
-        uint256 cost = calculatePurchaseReturn(_amount);
+        uint256 cost = calculatePurchaseCost(_tokenAmount);
         require(msg.value == cost, "Cost is higher than ETH sent");
 
-        _mint(_msgSender(), _amount);
+        _mint(_msgSender(), _tokenAmount);
 
         emit TokensPurchased(msg.sender, cost, cost);
     }
 
+    /**
+     * @notice Executes token sell based on amount of tokens sent to be sold
+     * @dev Amount if tokens needs to be less than or equal to user token balance
+     * @param _tokenAmount amount of tokens to sell
+     */
     function sell(uint256 _tokenAmount) external {
         require(_tokenAmount > 0, "Amount must be greater than zero");
         require(balanceOf(msg.sender) >= _tokenAmount, "Insufficient token balance");
@@ -54,16 +64,24 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
         payable(_msgSender()).transfer(revenue);
     }
 
-    function calculatePurchaseReturn(uint256 _ethAmount) public view returns (uint256 cost) {
-        require(_ethAmount > 0, "Amount must be greater than zero");
+    /**
+     * @notice Executes caluclation how much of ETH is needed to purchase provided amount of tokens
+     * @param _tokenAmount amount of tokens to purchase
+     */
+    function calculatePurchaseCost(uint256 _tokenAmount) public view returns (uint256 cost) {
+        require(_tokenAmount > 0, "Amount must be greater than zero");
 
         uint256 currentTotalSupply = totalSupply();
         uint256 priceBeforeBuy = getPriceForSupply(currentTotalSupply);
-        uint256 priceAfterBuy = getPriceForSupply(currentTotalSupply + _ethAmount);
+        uint256 priceAfterBuy = getPriceForSupply(currentTotalSupply + _tokenAmount);
 
-        cost = _ethAmount * (priceBeforeBuy + priceAfterBuy) / 2;
+        cost = _tokenAmount * (priceBeforeBuy + priceAfterBuy) / 2;
     }
 
+    /**
+     * @notice Executes caluclation how much of ETH we will receive if we sell provided amount of tokens
+     * @param _tokenAmount amount of tokens to sell
+     */
     function calculateSaleReturn(uint256 _tokenAmount) public view returns (uint256 revenue) {
         require(_tokenAmount > 0, "Amount must be greater than zero");
 
@@ -74,14 +92,25 @@ contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
         revenue = _tokenAmount * (priceBeforeSell + priceAfterSell) / 2;
     }
 
+    /**
+     * @notice Returns current price based on total number of minted tokens
+     */
     function getCurrentPrice() public view returns (uint256 currentPrice) {
         currentPrice = getPriceForSupply(totalSupply());
     }
 
+    /**
+     * @notice Returns current price based on provided number of token supply
+     * @param _supply Provided custom tokens supply
+     */
     function getPriceForSupply(uint256 _supply) public view returns (uint256 priceBasedOnSupply) {
         priceBasedOnSupply = baseTokenPrice + (_supply * PRICE_INCREMENT_PER_TOKEN);
     }
 
+    /**
+     * @notice Handle the receipt of ERC1363 tokens.
+     * @dev See {IERC1363Receiver-onTransferReceived}.
+     */
     function onTransferReceived(address spender, address sender, uint256 amount, bytes memory data)
         public
         override
