@@ -6,7 +6,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {LinearBondingCurve} from "../src/3_LinearBondingCurve.sol";
 
 contract LinearBondingCurveTest is Test {
-    uint256 public constant BASE_TOKEN_FEE =  0.005 ether;
+    uint256 public constant BASE_TOKEN_FEE = 0.005 ether;
 
     LinearBondingCurve public linearBondingCurve;
 
@@ -32,7 +32,11 @@ contract LinearBondingCurveTest is Test {
         vm.startPrank(tradeUser1);
         vm.deal(tradeUser1, 10 ether);
 
-        assertEq(BASE_TOKEN_FEE, linearBondingCurve.getCurrentPrice(), "Current price needs to be equalt to BASE_TOKEN_FEE on start.");
+        assertEq(
+            BASE_TOKEN_FEE,
+            linearBondingCurve.getCurrentPrice(),
+            "Current price needs to be equalt to BASE_TOKEN_FEE on start."
+        );
         assertEq(0, linearBondingCurve.totalSupply(), "Total supply needs to be 0 on start");
 
         uint256 calculatedPriceForTokenBuy = linearBondingCurve.calculatePurchaseReturn(1);
@@ -42,7 +46,7 @@ contract LinearBondingCurveTest is Test {
         console.log("Current eth balance of contract: %s", address(linearBondingCurve).balance);
         console.log("Current totalSupply: %s", linearBondingCurve.totalSupply());
 
-        assertEq(1, linearBondingCurve.balanceOf(tradeUser1),  "User balance after purchase needs to be 1.");
+        assertEq(1, linearBondingCurve.balanceOf(tradeUser1), "User balance after purchase needs to be 1.");
         assertEq(1, linearBondingCurve.totalSupply(), "Total supply increased by number of tokens minted.");
 
         console.log("Current balance tradeUser1: %s", linearBondingCurve.balanceOf(tradeUser1));
@@ -50,10 +54,14 @@ contract LinearBondingCurveTest is Test {
         console.log("Current balance owner: %s", linearBondingCurve.balanceOf(owner));
 
         uint256 calculatedPriceForTokenSell = linearBondingCurve.calculateSaleReturn(1);
-        assertEq(calculatedPriceForTokenBuy, calculatedPriceForTokenSell, "Price for token buy before purchase and price for same amount of token sell should be the same.");
+        assertEq(
+            calculatedPriceForTokenBuy,
+            calculatedPriceForTokenSell,
+            "Price for token buy before purchase and price for same amount of token sell should be the same."
+        );
         linearBondingCurve.sell(1);
 
-        assertEq(0, linearBondingCurve.balanceOf(tradeUser1),  "User balance after selling tokens needs to be 0.");
+        assertEq(0, linearBondingCurve.balanceOf(tradeUser1), "User balance after selling tokens needs to be 0.");
         assertEq(0, linearBondingCurve.totalSupply(), "Total supply increased by number of tokens minted.");
     }
 }

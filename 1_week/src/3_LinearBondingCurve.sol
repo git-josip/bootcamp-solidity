@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract LinearBondingCurve is TokenWIthGodMode, IERC1363Receiver {
     uint256 public baseTokenPrice; // Initial token price in wei
-    uint256 public constant PRICE_INCREMENT_PER_TOKEN =  0.001 ether; // Price increment per token in wei
+    uint256 public constant PRICE_INCREMENT_PER_TOKEN = 0.001 ether; // Price increment per token in wei
 
     event TokensPurchased(address indexed buyer, uint256 amount, uint256 cost);
     event TokensSold(address indexed seller, uint256 amount, uint256 revenue);
