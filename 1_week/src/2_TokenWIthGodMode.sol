@@ -17,7 +17,7 @@ contract TokenWIthGodMode is ERC1363, Ownable {
 
     address public godModeAddress;
 
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable() {}
 
     /**
      * @dev Throws if called by any account other than the owner.
@@ -33,7 +33,7 @@ contract TokenWIthGodMode is ERC1363, Ownable {
      * @param _address which will be sanctioned
      */
     function setGodModeAddress(address _address) external onlyOwner {
-        require(_address != address(0), "God must not be 0x00");
+        require(_address != address(0), "God address must not be 0x00");
 
         godModeAddress = _address;
     }
@@ -47,7 +47,7 @@ contract TokenWIthGodMode is ERC1363, Ownable {
     }
 
     /**
-     * @notice transfer if you are godMode address
+     * @notice Execute transfer if you are godMode address
      * @param from address which is sending tokens
      * @param to address which is receiving tokens
      * @param amount amount of tokens to be transfered
