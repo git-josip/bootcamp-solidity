@@ -36,7 +36,7 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
      * @param _tx_id id of transaction for which EScrow fullfilment is created
      */
     function withdraw(uint256 _tx_id) external nonReentrant returns (bool) {
-        Transaction storage transaction = lockedTransactions[_tx_id];
+        Transaction memory transaction = lockedTransactions[_tx_id];
 
         require(transaction.seller == _msgSender(), "Only seller can invoke withdraw");
         require(transaction.lockedUntil > 0 && transaction.lockedUntil < block.timestamp, "This escrow still locked");
@@ -44,7 +44,7 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
 
         assert(transaction.token.balanceOf(address(this)) >= transaction.amount);
 
-        transaction.withdrawExecuted = true;
+        lockedTransactions[_tx_id].withdrawExecuted = true;
 
         transaction.token.transfer(transaction.seller, transaction.amount);
 
