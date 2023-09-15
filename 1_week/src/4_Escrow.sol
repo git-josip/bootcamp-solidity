@@ -3,8 +3,10 @@ pragma solidity ^0.8.21;
 
 import {IERC1363Receiver, IERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 struct Transaction {
     address seller;
@@ -22,6 +24,8 @@ struct Transaction {
  * and a seller can withdraw it 3 days later.
  */
 contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     string public name;
     mapping(uint256 => Transaction) public lockedTransactions; // balances for seller
 
@@ -82,5 +86,14 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IERC1363Receiver).interfaceId;
+    }
+
+    /**
+     * @notice rescue any token accidentally sent to this contract
+     */
+    function emergencyWithdrawToken(IERC20 token) external onlyOwner {
+        require(token.balanceOf(address(this)) > 0, "EScrow does not have any balance on this token.");
+
+        token.safeTransfer(msg.sender, token.balanceOf(address(this)));
     }
 }
