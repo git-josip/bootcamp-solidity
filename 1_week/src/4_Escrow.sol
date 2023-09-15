@@ -3,7 +3,6 @@ pragma solidity ^0.8.21;
 
 import {IERC1363Receiver, IERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -16,6 +15,12 @@ struct Transaction {
     bool withdrawExecuted;
 }
 
+/**
+ * @title EScrow transaction time lock mechanism implementation.
+ * @author Josip Medic
+ * @notice This contract implements ESCrow solution where a buyer can put an arbitrary ERC20 token into a contract
+ * and a seller can withdraw it 3 days later.
+ */
 contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
     string public name;
     mapping(uint256 => Transaction) public lockedTransactions; // balances for seller
@@ -24,10 +29,12 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
         name = _name;
     }
 
-    function getTransaction(uint256 _tx_id) external view returns (Transaction memory) {
-        return lockedTransactions[_tx_id];
-    }
-
+    /**
+     * @notice Handle the receipt of ERC1363 tokens.
+     * After token is transffered to EScrow, then transaction fullfilment is created.
+     * @dev Only transaction seller can execute this method.
+     * @param _tx_id id of transaction for which EScrow fullfilment is created
+     */
     function withdraw(uint256 _tx_id) external nonReentrant returns (bool) {
         Transaction storage transaction = lockedTransactions[_tx_id];
 
@@ -46,13 +53,17 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
 
     /**
      * @notice Handle the receipt of ERC1363 tokens.
+     * After token is transffered to EScrow, then transaction fullfilment is created.
      * @dev See {IERC1363Receiver-onTransferReceived}.
      */
     function onTransferReceived(address, /*spender*/ address sender, uint256 amount, bytes calldata data)
         public
         override
+        nonReentrant
         returns (bytes4)
     {
+        require(IERC1363(_msgSender()).balanceOf(address(this)) >= amount, "Not enough tokens transfered");
+
         uint256 txId = uint256(abi.decode(data[:32], (bytes32)));
         address seller = address(uint160(uint256(abi.decode(data[32:], (bytes32)))));
 
