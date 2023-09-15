@@ -177,7 +177,7 @@ contract LinearBondingCurveTest is Test {
 
         TokenWIthGodMode otherToken = new TokenWIthGodMode("Dummy Token", "DT", 1000);
 
-        vm.expectRevert(bytes("acceptedToken is not message sender"));
+        vm.expectRevert(bytes("Not supported token is sent"));
         otherToken.transferAndCall(address(linearBondingCurve), 10);
     }
 }

@@ -117,7 +117,7 @@ contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
         override
         returns (bytes4)
     {
-        require(_msgSender() == address(acceptedToken), "acceptedToken is not message sender");
+        require(_msgSender() == address(acceptedToken), "Not supported token is sent");
 
         emit TokensReceived(spender, sender, amount, data);
 
