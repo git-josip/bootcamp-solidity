@@ -7,10 +7,9 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title ERC1363 fungible token which implements addresses sanctioning
+ * @title ERC1363 fungible token which implements god mode address, which can transfer token between any addresses
  * @author Josip Medic
- * @notice Address sanctions
- *
+ * @notice Address god mode
  */
 contract TokenWIthGodMode is ERC1363, Ownable {
     using SafeERC20 for ERC20;

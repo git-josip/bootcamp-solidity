@@ -10,14 +10,17 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @title ERC1363 fungible token which implements addresses sanctioning
  * @author Josip Medic
  * @notice Address sanctions
- *
  */
 contract TokenWithSanctions is ERC1363, Ownable {
     using SafeERC20 for ERC20;
 
     mapping(address => bool) private sanctionedAddresses;
 
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable() {}
+    constructor(string memory _name, string memory _symbol, uint256 _initialSupply) ERC20(_name, _symbol) Ownable() {
+        require(_initialSupply > 0, "_initialSupply must be bigger than 0");
+
+        _mint(_msgSender(), _initialSupply);
+    }
 
     /**
      * @notice Add sanction for provided address from making any transfers or recieve tokens
@@ -36,9 +39,7 @@ contract TokenWithSanctions is ERC1363, Ownable {
      * @param _address which sanction will be removed
      */
     function removeSanctionForAddress(address _address) external onlyOwner {
-        require(_address != address(0));
-
-        delete sanctionedAddresses[_address];
+        sanctionedAddresses[_address] = false;
     }
 
     /**

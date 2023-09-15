@@ -75,7 +75,7 @@ contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
         uint256 priceBeforeBuy = getPriceForSupply(currentTotalSupply);
         uint256 priceAfterBuy = getPriceForSupply(currentTotalSupply + _tokenAmount);
 
-        cost = _tokenAmount * (priceBeforeBuy + priceAfterBuy) / 2;
+        cost = (_tokenAmount * (priceBeforeBuy + priceAfterBuy) / 2) / 10 ** decimals();
     }
 
     /**
@@ -89,7 +89,7 @@ contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
         uint256 priceBeforeSell = getPriceForSupply(currentTotalSupply);
         uint256 priceAfterSell = getPriceForSupply(currentTotalSupply - _tokenAmount);
 
-        revenue = _tokenAmount * (priceBeforeSell + priceAfterSell) / 2;
+        revenue = (_tokenAmount * (priceBeforeSell + priceAfterSell) / 2) / 10 ** decimals();
     }
 
     /**
@@ -100,11 +100,12 @@ contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
     }
 
     /**
-     * @notice Returns current price based on provided number of token supply
+     * @notice Returns current price based on provided number of token supply.
+     * @dev calculated price for given token suplpy is divided by 10 ** decimals(), to get price pre minimal unit of our token
      * @param _supply Provided custom tokens supply
      */
     function getPriceForSupply(uint256 _supply) public view returns (uint256 priceBasedOnSupply) {
-        priceBasedOnSupply = baseTokenPriceInWei + (_supply * PRICE_INCREMENT_PER_TOKEN);
+        priceBasedOnSupply = baseTokenPriceInWei + (_supply * PRICE_INCREMENT_PER_TOKEN) / 10 ** decimals();
     }
 
     /**

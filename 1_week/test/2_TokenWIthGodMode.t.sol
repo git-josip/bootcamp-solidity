@@ -23,7 +23,7 @@ contract TokenWIthGodModeTest is Test {
         vm.label(owner, "owner");
 
         vm.prank(owner);
-        tokenWIthGodMode = new TokenWIthGodMode("RareSkills GodMode Token", "RGT", 1_000_000);
+        tokenWIthGodMode = new TokenWIthGodMode("RareSkills GodMode Token", "RGT", 1_000_000 ether);
     }
 
     function test_OwnerCanAssignGodModeUser() public {
