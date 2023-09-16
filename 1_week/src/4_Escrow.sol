@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 struct Transaction {
     address seller;
@@ -25,6 +26,7 @@ struct Transaction {
  */
 contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     string public name;
     mapping(uint256 => Transaction) public lockedTransactions; // balances for seller
@@ -66,6 +68,11 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
         nonReentrant
         returns (bytes4)
     {
+        require(_msgSender().isContract(), "msg.sender needs to be contract");
+        require(
+            IERC1363(_msgSender()).supportsInterface(type(IERC1363).interfaceId),
+            "Contract needs to support IERC1363 interface."
+        );
         require(IERC1363(_msgSender()).balanceOf(address(this)) >= amount, "Not enough tokens transfered");
 
         uint256 txId = uint256(abi.decode(data[:32], (bytes32)));
