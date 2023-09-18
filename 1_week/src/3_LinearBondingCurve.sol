@@ -6,6 +6,7 @@ import {IERC1363Receiver, IERC1363} from "@payabletoken/contracts/token/ERC1363/
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title Simple LinearBondingCurve implemntation
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice This contract implements a basic linear bonding curve with a constant price increment.
  *  Users can buy and sell tokens, and the price increases or decreases linearly with each transaction.
  */
-contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
+contract LinearBondingCurve is ERC1363, Ownable, ReentrancyGuard, IERC1363Receiver {
     uint256 public baseTokenPriceInWei;
     uint256 public constant PRICE_INCREMENT_PER_TOKEN = 0.001 ether; // Price increment per token in wei
 
@@ -35,7 +36,7 @@ contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
      * @dev ETH value sent needs to be equal to amount which function calculatePurchaseCost returns
      * @param _tokenAmount amount of tokens to purchase
      */
-    function buy(uint256 _tokenAmount) external payable {
+    function buy(uint256 _tokenAmount) external payable nonReentrant {
         require(_tokenAmount > 0, "Amount must be greater than zero");
 
         uint256 cost = calculatePurchaseCost(_tokenAmount);
@@ -51,7 +52,7 @@ contract LinearBondingCurve is ERC1363, Ownable, IERC1363Receiver {
      * @dev Amount if tokens needs to be less than or equal to user token balance
      * @param _tokenAmount amount of tokens to sell
      */
-    function sell(uint256 _tokenAmount) external {
+    function sell(uint256 _tokenAmount) external nonReentrant {
         require(_tokenAmount > 0, "Amount must be greater than zero");
         require(balanceOf(msg.sender) >= _tokenAmount, "Insufficient token balance");
 
