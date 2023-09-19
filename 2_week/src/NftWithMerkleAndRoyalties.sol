@@ -36,25 +36,31 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
         whitelistUsersMerkleRoot = _whitelistUsersMerkleRoot;
     }
 
-    function discountMint(uint256 discountMintPass, bytes32[] calldata merkleProof)
+    /**
+     * @notice Executes discount NFT mint if user is whitelisted to mint at discounted price
+     * @dev ETH value sent needs to match token discountedPrice
+     * @param _discountMintPass pass which has been provided to user
+     * @param _merkleProof minimal MerleProof need to construct MerkleRoot using provided pass and sender adress
+     */
+    function discountMint(uint256 _discountMintPass, bytes32[] calldata _merkleProof)
         external
         payable
         returns (uint256 tokenId)
     {
         require(
             MerkleProof.verify(
-                merkleProof,
+                _merkleProof,
                 whitelistUsersMerkleRoot,
-                keccak256(bytes.concat(keccak256(abi.encode(_msgSender(), discountMintPass))))
+                keccak256(bytes.concat(keccak256(abi.encode(_msgSender(), _discountMintPass))))
             ),
             "Merkle proof for provided discountPass/address combination is invalid"
         );
-        require(mintedTokens.get(discountMintPass) == false, "Discount Mint pass already used.");
+        require(mintedTokens.get(_discountMintPass) == false, "Discount Mint pass already used.");
         require(msg.value == discountedMintPriceInWei, "Invalid amount passed. Price is not matched.");
         uint256 currentMaxSupply = maxSupply;
         require(currentMaxSupply > 1, "All tokes are minted.");
 
-        mintedTokens.set(discountMintPass);
+        mintedTokens.set(_discountMintPass);
         _safeMint(_msgSender(), currentMaxSupply);
         unchecked {
             maxSupply = currentMaxSupply - 1;
@@ -63,6 +69,10 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
         tokenId = currentMaxSupply;
     }
 
+    /**
+     * @notice Executes regular NFT mint if user
+     * @dev ETH value sent needs to match token price
+     */
     function mint() external payable returns (uint256 tokenId) {
         require(msg.value == mintPriceInWei, "Invalid amount passed. Price is not matched.");
         uint256 currentMaxSupply = maxSupply;
