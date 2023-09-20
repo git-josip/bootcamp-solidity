@@ -38,7 +38,7 @@ contract TokenWithSanctionsTest is Test {
         merkleRoot = merkleTree.getRoot(merkleData);
 
         vm.prank(owner);
-        nftWithMerkleAndRoyalties = new NftWithMerkleAndRoyalties("RareSkills Address Sanctions", "RAS", 20, merkleRoot);
+        nftWithMerkleAndRoyalties = new NftWithMerkleAndRoyalties("RareSkills NFT", "RNFT", 20, merkleRoot);
     }
 
     function test_WhitelistedUserCanMintTokensOnDicountPrice() public {
