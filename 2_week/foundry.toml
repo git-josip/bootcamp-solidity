@@ -7,5 +7,6 @@ libs = ["lib"]
 
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/",
-    "@murky/=lib/murky/src"
+    "@murky/=lib/murky/src",
+     "@payabletoken/=lib/erc1363-payable-token/",
 ]

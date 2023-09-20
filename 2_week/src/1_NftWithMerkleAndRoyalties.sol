@@ -3,7 +3,6 @@ pragma solidity 0.8.21;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
@@ -19,11 +18,12 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
     /**
      * @dev Default _feeDenominator in ERC2981 is 10_000. This value is equivalent to 2.5% as requested.
      */
-    uint256 public constant defaultFeeNumerator = 250;
+    uint96 public constant defaultFeeNumerator = 250;
 
     uint256 public mintPriceInWei = 0.01 ether;
     uint256 public discountedMintPriceInWei = 0.005 ether;
-    uint256 public maxSupply;
+    uint256 public immutable maxSupply;
+    uint256 currentTokenId = 1;
     bytes32 public immutable whitelistUsersMerkleRoot;
     BitMaps.BitMap private mintedTokens;
 
@@ -32,7 +32,7 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
     {
         require(_maxSupply > 0, "MaxSupply must be bigger than 0");
 
-        maxSupply = _maxSupply;
+        maxSupply = _maxSupply + 1;
         whitelistUsersMerkleRoot = _whitelistUsersMerkleRoot;
 
         /**
@@ -40,6 +40,7 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
          * presale mint passes will be in first bitmap bucket as we are ones that are definig it.
          */
         BitMaps.setTo(mintedTokens, 255, true);
+        _setDefaultRoyalty(_msgSender(), defaultFeeNumerator);
     }
 
     /**
@@ -51,7 +52,7 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
     function preSaleMint(uint256 _mintPass, bytes32[] calldata _merkleProof)
         external
         payable
-        returns (uint256 tokenId)
+        returns (uint256 mintedTokenId)
     {
         require(
             MerkleProof.verify(
@@ -63,33 +64,33 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
         );
         require(BitMaps.get(mintedTokens, _mintPass) == false, "Discount Mint pass already used.");
         require(msg.value == discountedMintPriceInWei, "Invalid amount passed. Price is not matched.");
-        uint256 currentMaxSupply = maxSupply;
-        require(currentMaxSupply > 0, "All tokes are minted.");
+        uint256 tokenId = currentTokenId;
+        require(tokenId < maxSupply, "All tokes are minted.");
 
         BitMaps.setTo(mintedTokens, _mintPass, true);
-        _safeMint(_msgSender(), currentMaxSupply);
         unchecked {
-            maxSupply = currentMaxSupply - 1;
+            currentTokenId = tokenId + 1;
         }
+        _safeMint(_msgSender(), tokenId);
 
-        tokenId = currentMaxSupply;
+        mintedTokenId = tokenId;
     }
 
     /**
-     * @notice Executes regular NFT mint if user
+     * @notice Executes regular NFT mint at regular price
      * @dev ETH value sent needs to match token price
      */
-    function mint() external payable returns (uint256 tokenId) {
+    function mint() external payable returns (uint256 mintedTokenId) {
         require(msg.value == mintPriceInWei, "Invalid amount passed. Price is not matched.");
-        uint256 currentMaxSupply = maxSupply;
-        require(currentMaxSupply > 0, "All tokes are minted.");
+        uint256 tokenId = currentTokenId;
+        require(tokenId < maxSupply, "All tokes are minted.");
 
-        _safeMint(_msgSender(), currentMaxSupply);
         unchecked {
-            maxSupply = currentMaxSupply - 1;
+            currentTokenId = tokenId + 1;
         }
+        _safeMint(_msgSender(), tokenId);
 
-        tokenId = currentMaxSupply;
+        mintedTokenId = tokenId;
     }
 
     /**

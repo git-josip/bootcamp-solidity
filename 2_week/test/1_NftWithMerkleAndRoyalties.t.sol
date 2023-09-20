@@ -174,4 +174,20 @@ contract TokenWithSanctionsTest is Test {
         vm.expectRevert(bytes("All tokes are minted."));
         nftWithMerkleAndRoyalties.mint{value: 0.01 ether}();
     }
+
+    function test_RoyaltyInfoReturnedShouldBe_2_5_Percent() public {
+        // setup
+        (address user, uint256 discountPass) = getDiscountPassAndUserAtIndex(10);
+        vm.startPrank(user);
+        vm.deal(user, 10 ether);
+
+        // test execution
+        bytes32[] memory merkleProof = merkleTree.getProof(merkleData, 10);
+        uint256 tokenId = nftWithMerkleAndRoyalties.preSaleMint{value: 0.005 ether}(discountPass, merkleProof);
+
+        (address addresToPayRoyalty, uint256 royaltyAmount) = nftWithMerkleAndRoyalties.royaltyInfo(tokenId, 10 ether);
+
+        assertEq(owner, addresToPayRoyalty, "Creator of NFT should be one to receive royalty payments.");
+        assertEq(0.25 ether, royaltyAmount, "Royalty amount should be 2.5% of sale price.");
+    }
 }
