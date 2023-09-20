@@ -4,3 +4,6 @@
 [submodule "2_week/lib/openzeppelin-contracts"]
 	path = 2_week/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "2_week/lib/murky"]
+	path = 2_week/lib/murky
+	url = https://github.com/dmfxyz/murky

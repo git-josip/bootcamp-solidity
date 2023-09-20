@@ -34,15 +34,21 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
 
         maxSupply = _maxSupply;
         whitelistUsersMerkleRoot = _whitelistUsersMerkleRoot;
+
+        /**
+         * @dev To lower gas we will initliaze on contract creation first bitMap bucket as we know that our
+         * presale mint passes will be in first bitmap bucket as we are ones that are definig it.
+         */
+        BitMaps.setTo(mintedTokens, 255, true);
     }
 
     /**
      * @notice Executes discount NFT mint if user is whitelisted to mint at discounted price
      * @dev ETH value sent needs to match token discountedPrice
-     * @param _discountMintPass pass which has been provided to user
+     * @param _mintPass pass which has been provided to user
      * @param _merkleProof minimal MerleProof need to construct MerkleRoot using provided pass and sender adress
      */
-    function discountMint(uint256 _discountMintPass, bytes32[] calldata _merkleProof)
+    function preSaleMint(uint256 _mintPass, bytes32[] calldata _merkleProof)
         external
         payable
         returns (uint256 tokenId)
@@ -51,16 +57,16 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
             MerkleProof.verify(
                 _merkleProof,
                 whitelistUsersMerkleRoot,
-                keccak256(bytes.concat(keccak256(abi.encode(_msgSender(), _discountMintPass))))
+                keccak256(bytes.concat(keccak256(abi.encode(_msgSender(), _mintPass))))
             ),
             "Merkle proof for provided discountPass/address combination is invalid"
         );
-        require(mintedTokens.get(_discountMintPass) == false, "Discount Mint pass already used.");
+        require(BitMaps.get(mintedTokens, _mintPass) == false, "Discount Mint pass already used.");
         require(msg.value == discountedMintPriceInWei, "Invalid amount passed. Price is not matched.");
         uint256 currentMaxSupply = maxSupply;
-        require(currentMaxSupply > 1, "All tokes are minted.");
+        require(currentMaxSupply > 0, "All tokes are minted.");
 
-        mintedTokens.set(_discountMintPass);
+        BitMaps.setTo(mintedTokens, _mintPass, true);
         _safeMint(_msgSender(), currentMaxSupply);
         unchecked {
             maxSupply = currentMaxSupply - 1;
@@ -76,7 +82,7 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
     function mint() external payable returns (uint256 tokenId) {
         require(msg.value == mintPriceInWei, "Invalid amount passed. Price is not matched.");
         uint256 currentMaxSupply = maxSupply;
-        require(currentMaxSupply > 1, "All tokes are minted.");
+        require(currentMaxSupply > 0, "All tokes are minted.");
 
         _safeMint(_msgSender(), currentMaxSupply);
         unchecked {
