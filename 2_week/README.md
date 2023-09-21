@@ -2,12 +2,12 @@
 
 ## 1_NftWithMerkleAndRoyalties
 
-![Alt text](NftWithMerkleAndRoyalties_gas_report.png)
+![Alt text](1_NftWithMerkleAndRoyalties_gas_report.png)
 
 ## 2_StakeAndGetReward
 
-![Alt text](2_StakeAndGetReward.png)
+![Alt text](2_StakeAndGetReward_gas_report.png)
 
 ## 3_NftNumerableAndPrime
 
-![Alt text](3_NftNumerableAndPrime.png)
+![Alt text](3_NftNumerableAndPrime_gas_report.png)

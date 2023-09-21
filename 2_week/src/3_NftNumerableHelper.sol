@@ -49,9 +49,9 @@ contract NftNumerableHelper {
 
     /**
      * @dev Fermat's little theorem states that if p is a prime number,
-     * then for any integer a, the number ap − a is an integer multiple of p.
+     * then for any integer a, the number a*p − a is an integer multiple of p.
      * In the notation of modular arithmetic, this is expressed as:
-     *  a ^ n = a (mod n)
+     *  a ^ p = a (mod n)
      */
     function isPrime(uint256 n) public view returns (bool result) {
         if (n < 2) {
