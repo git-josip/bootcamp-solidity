@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {console} from "forge-std/console.sol";
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {EScrow} from "../src/4_EScrow.sol";
 import {TokenWIthGodMode} from "../src/2_TokenWIthGodMode.sol";
 import {IERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";

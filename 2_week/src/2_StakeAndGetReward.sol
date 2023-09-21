@@ -75,7 +75,7 @@ contract StakeAndGetReward is IERC721Receiver, Ownable2Step {
      */
     function collectReward(uint256 _tokenId) external returns (bool sucess) {
         NftDeposit storage nftDeposit = nftDeposits[_tokenId];
-        require(nftDeposit.owner == _msgSender(), "Only address who initaly staked NFT can un stake it.");
+        require(nftDeposit.owner == _msgSender(), "Only address who initaly staked NFT can collect reward.");
         uint256 rewardAmount = calculateReward(_tokenId);
 
         nftDeposit.stakedAt = block.timestamp;
