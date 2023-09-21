@@ -3,6 +3,9 @@ pragma solidity 0.8.21;
 
 import {ERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
+import {ERC165} from "openzeppelin/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -23,10 +26,14 @@ contract RewardToken is ERC1363, IRewardToken {
     /**
      * @dev Only stakingReward is allowed to mint tokens
      */
-    ERC20 public stakingContract;
+    IERC721Receiver public stakingContract;
 
-    constructor(ERC20 _stakingContract) ERC20("Reward Staking Token", "RST") {
+    constructor(IERC721Receiver _stakingContract) ERC20("Reward Staking Token", "RST") {
         require(address(_stakingContract).isContract(), "StakingContract must be contract not external account.");
+        require(
+            ERC165(address(_stakingContract)).supportsInterface(type(IERC721Receiver).interfaceId),
+            "Contract must implement IERC721Receiver interafce."
+        );
 
         stakingContract = _stakingContract;
     }

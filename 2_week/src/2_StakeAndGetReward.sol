@@ -6,7 +6,9 @@ import {IERC721} from "openzeppelin/token/ERC721/IERC721.sol";
 import {Ownable2Step} from "openzeppelin/access/Ownable2Step.sol";
 import {Ownable} from "openzeppelin/access/Ownable2Step.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC165} from "openzeppelin/utils/introspection/ERC165.sol";
 import {IRewardToken} from "./2_RewardToken.sol";
+import {IERC1363} from "@payabletoken/contracts/token/ERC1363/IERC1363.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
@@ -14,7 +16,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * @author Josip Medic
  * @notice ERC721 token for staking
  */
-contract StakeAndGetReward is IERC721Receiver, Ownable2Step {
+contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
     using Address for address;
 
     struct NftDeposit {
@@ -31,6 +33,10 @@ contract StakeAndGetReward is IERC721Receiver, Ownable2Step {
     constructor(IERC721 _nftStakeTokenContract) Ownable() {
         require(
             address(_nftStakeTokenContract).isContract(), "NftStakeTokenContract must be contract not external account."
+        );
+        require(
+            ERC165(address(_nftStakeTokenContract)).supportsInterface(type(IERC721).interfaceId),
+            "Contract must implement IERC721 interafce."
         );
 
         nftStakeTokenContract = _nftStakeTokenContract;
@@ -124,7 +130,18 @@ contract StakeAndGetReward is IERC721Receiver, Ownable2Step {
         require(
             address(_rewardTokenContract).isContract(), "RewardTokenContract must be contract not external account."
         );
+        require(
+            ERC165(address(_rewardTokenContract)).supportsInterface(type(IERC1363).interfaceId),
+            "Contract must implement IERC1363 interafce."
+        );
 
         rewardTokenContract = _rewardTokenContract;
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165) returns (bool) {
+        return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 }

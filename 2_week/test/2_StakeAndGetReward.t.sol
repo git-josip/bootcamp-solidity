@@ -6,7 +6,7 @@ import {Test} from "forge-std/Test.sol";
 import {StakeAndGetReward} from "../src/2_StakeAndGetReward.sol";
 import {RewardToken} from "../src/2_RewardToken.sol";
 import {NftStakingToken} from "../src/2_NftStakingToken.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract StakeAndGetRewardTest is Test {
@@ -39,7 +39,7 @@ contract StakeAndGetRewardTest is Test {
         vm.prank(owner);
         nftStakingToken = new NftStakingToken("RareSkills NFT", "RNFT", 20);
         stakeAndGetReward = new StakeAndGetReward(nftStakingToken);
-        rewardToken = new RewardToken(ERC20(address(stakeAndGetReward)));
+        rewardToken = new RewardToken(IERC721Receiver(address(stakeAndGetReward)));
         stakeAndGetReward.setRewardTokenContract(rewardToken);
     }
 
