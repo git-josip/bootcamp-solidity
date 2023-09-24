@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 import {IERC1363Receiver, IERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -24,9 +25,12 @@ struct Transaction {
  * @notice This contract implements ESCrow solution where a buyer can put an arbitrary ERC20 token into a contract
  * and a seller can withdraw it 3 days later.
  */
-contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
+contract EScrow is Ownable2Step, IERC1363Receiver, IERC165, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
+
+    event Withdrawed(address indexed seller, uint256 tx_id, uint256 amount);
+    event Deposited(address indexed buyer, address indexed seller, uint256 tx_id, uint256 amount);
 
     string public name;
     mapping(uint256 => Transaction) public lockedTransactions; // balances for seller
@@ -53,6 +57,8 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
         lockedTransactions[_tx_id].withdrawExecuted = true;
 
         transaction.token.transfer(transaction.seller, transaction.amount);
+
+        emit Withdrawed(msg.sender, _tx_id, transaction.amount);
 
         return true;
     }
@@ -84,6 +90,8 @@ contract EScrow is Ownable, IERC1363Receiver, IERC165, ReentrancyGuard {
         lockedTransactions[txId].amount = amount;
         lockedTransactions[txId].lockedUntil = block.timestamp + 3 days;
         lockedTransactions[txId].withdrawExecuted = false;
+
+        emit Deposited(sender, seller, txId, amount);
 
         return IERC1363Receiver.onTransferReceived.selector;
     }

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 import {ERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {IERC1363Receiver, IERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -14,7 +15,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * @notice This contract implements a basic linear bonding curve with a constant price increment.
  *  Users can buy and sell tokens, and the price increases or decreases linearly with each transaction.
  */
-contract LinearBondingCurve is ERC1363, Ownable, ReentrancyGuard, IERC1363Receiver {
+contract LinearBondingCurve is ERC1363, Ownable2Step, ReentrancyGuard, IERC1363Receiver {
     uint256 public baseTokenPriceInWei;
     uint256 public constant PRICE_INCREMENT_PER_TOKEN = 0.001 ether; // Price increment per token in wei
 
@@ -52,7 +53,7 @@ contract LinearBondingCurve is ERC1363, Ownable, ReentrancyGuard, IERC1363Receiv
      * @dev Amount if tokens needs to be less than or equal to user token balance
      * @param _tokenAmount amount of tokens to sell
      */
-    function sell(uint256 _tokenAmount) external nonReentrant {
+    function sell(uint256 _tokenAmount) external nonReentrant returns (bool success) {
         require(_tokenAmount > 0, "Amount must be greater than zero");
         require(balanceOf(msg.sender) >= _tokenAmount, "Insufficient token balance");
 
@@ -62,7 +63,8 @@ contract LinearBondingCurve is ERC1363, Ownable, ReentrancyGuard, IERC1363Receiv
 
         emit TokensSold(_msgSender(), _tokenAmount, revenue);
 
-        payable(_msgSender()).transfer(revenue);
+        (success, ) = payable(_msgSender()).call{value: revenue}("");
+        require(success, "Failed transfer of revenu.");
     }
 
     /**
@@ -124,7 +126,8 @@ contract LinearBondingCurve is ERC1363, Ownable, ReentrancyGuard, IERC1363Receiv
 
         uint256 revenue = calculateSaleReturn(amount);
         _burn(address(this), amount);
-        payable(sender).transfer(revenue);
+        (bool success, ) = payable(sender).call{value: revenue}("");
+        require(success, "Failed transfer of revenu.");
 
         return IERC1363Receiver.onTransferReceived.selector;
     }

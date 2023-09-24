@@ -19,6 +19,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
 contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
     using Address for address;
 
+    event TokenStaked(address indexed owner, uint256 indexed tokenId);
+    event TokenUnStaked(address indexed owner, uint256 indexed tokenId, uint256 reward);
+    event RewardCollected(address indexed owner, uint256 indexed tokenId, uint256 reward);
+
     struct NftDeposit {
         address owner;
         uint256 stakedAt;
@@ -55,6 +59,7 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
 
         nftStakeTokenContract.safeTransferFrom(_msgSender(), address(this), _tokenId);
         sucess = true;
+        emit TokenStaked(_msgSender(), _tokenId);
     }
 
     /**
@@ -73,6 +78,7 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
         nftStakeTokenContract.safeTransferFrom(address(this), _msgSender(), _tokenId);
 
         sucess = true;
+        emit TokenUnStaked(_msgSender(), _tokenId, rewardAmount);
     }
 
     /**
@@ -90,6 +96,7 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
         }
 
         sucess = true;
+        emit RewardCollected(_msgSender(), _tokenId, rewardAmount);
     }
 
     function onERC721Received(address, /*operator*/ address from, uint256 tokenId, bytes calldata /*data*/ )
@@ -105,6 +112,7 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
         NftDeposit memory nftDeposit = NftDeposit({owner: from, stakedAt: block.timestamp});
 
         nftDeposits[tokenId] = nftDeposit;
+        emit TokenStaked(_msgSender(), tokenId);
 
         return IERC721Receiver.onERC721Received.selector;
     }

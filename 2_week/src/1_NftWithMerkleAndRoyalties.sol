@@ -15,6 +15,8 @@ import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
     using BitMaps for BitMaps.BitMap;
 
+    event PresaleMinted(address indexed owner, uint256 indexed tokenId);
+
     /**
      * @dev Default _feeDenominator in ERC2981 is 10_000. This value is equivalent to 2.5% as requested.
      */
@@ -32,7 +34,8 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
     {
         require(_maxSupply > 0, "MaxSupply must be bigger than 0");
 
-        maxSupply = _maxSupply + 1;
+        // @dev: increased by 1 as tokenId starts from 1
+        maxSupply = _maxSupply + 1; 
         whitelistUsersMerkleRoot = _whitelistUsersMerkleRoot;
 
         /**
@@ -72,6 +75,8 @@ contract NftWithMerkleAndRoyalties is ERC721, ERC2981 {
             currentTokenId = tokenId + 1;
         }
         _safeMint(_msgSender(), tokenId);
+
+        emit PresaleMinted(_msgSender(), tokenId);
 
         mintedTokenId = tokenId;
     }
