@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 import {ERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
@@ -11,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @author Josip Medic
  * @notice Address god mode
  */
-contract TokenWIthGodMode is ERC1363, Ownable {
+contract TokenWIthGodMode is ERC1363, Ownable2Step {
     using SafeERC20 for ERC20;
 
     address public godModeAddress;

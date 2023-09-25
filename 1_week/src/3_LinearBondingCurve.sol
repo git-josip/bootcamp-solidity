@@ -78,7 +78,9 @@ contract LinearBondingCurve is ERC1363, Ownable2Step, ReentrancyGuard, IERC1363R
         uint256 priceBeforeBuy = getPriceForSupply(currentTotalSupply);
         uint256 priceAfterBuy = getPriceForSupply(currentTotalSupply + _tokenAmount);
 
-        cost = (_tokenAmount * (priceBeforeBuy + priceAfterBuy) / 2) / 10 ** decimals();
+        uint256 numerator = (_tokenAmount * (priceBeforeBuy + priceAfterBuy) / 2) * 10_000;
+        uint256 denumerator = 10 ** decimals() * 10_000;
+        cost =  numerator / denumerator;
     }
 
     /**
@@ -92,7 +94,9 @@ contract LinearBondingCurve is ERC1363, Ownable2Step, ReentrancyGuard, IERC1363R
         uint256 priceBeforeSell = getPriceForSupply(currentTotalSupply);
         uint256 priceAfterSell = getPriceForSupply(currentTotalSupply - _tokenAmount);
 
-        revenue = (_tokenAmount * (priceBeforeSell + priceAfterSell) / 2) / 10 ** decimals();
+        uint256 numerator = (_tokenAmount * (priceBeforeSell + priceAfterSell) / 2) * 10_000;
+        uint256 denumerator = 10 ** decimals() * 10_000;
+        revenue =  numerator / denumerator;
     }
 
     /**
