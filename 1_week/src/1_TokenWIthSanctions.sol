@@ -15,6 +15,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract TokenWithSanctions is ERC1363, Ownable2Step {
     using SafeERC20 for ERC20;
 
+    event AddressSanctioned(address indexed addr);
+    event AddressSanctionRemoved(address indexed addr);
+
     mapping(address => bool) private sanctionedAddresses;
 
     constructor(string memory _name, string memory _symbol, uint256 _initialSupply) ERC20(_name, _symbol) Ownable() {
@@ -32,6 +35,8 @@ contract TokenWithSanctions is ERC1363, Ownable2Step {
         require(_address != address(0));
 
         sanctionedAddresses[_address] = true;
+
+        emit AddressSanctioned(_address);
     }
 
     /**
@@ -41,6 +46,8 @@ contract TokenWithSanctions is ERC1363, Ownable2Step {
      */
     function removeSanctionForAddress(address _address) external onlyOwner {
         sanctionedAddresses[_address] = false;
+
+        emit AddressSanctionRemoved(_address);
     }
 
     /**
