@@ -1,8 +1,9 @@
 # Wrapped NFT
 
-A wNFT (wrapped NFT) is an upgraded NFT with expanded functionality such as economic set-up, on-chain royalties, rental mechanism, time/value/event-locks, protection of devaluation, and anti-fraud system. I also call it NFT 2.0 which tends to evolve the principles and rules of fundraising in particular and several other industries in general.
+As in the case of The Pudgy Penguins case, as founding team receives a small percentage in royalties from each NFT sale, meaning founders of successful projects can continue to earn money from NFTs as long as trading volume persists.
 
-There are numerous competitive advantages of wNFT technology to traditional NFTs. Thanks to this format, NFTs wrapped into collateral can be given without worrying about a possible dump of its tokens (ERC/BEP-20) and can define a preferred time lock setup.
+Wrapped NFT, in this case Wrapped Penguins, were available as a free mint on NFT platform Metadrop for current Penguin holders, would sever all ties with the original founding team with the new project in the hope of creating a parallel community that would be governed using a decentralized autonomous organization (DAO) framework.
 
+A wrapper is a smart contract that takes an asset and issues a parallel asset, allowing the Pudgy Penguins NFT holder to hold an identical “wrapped” penguin. The Wrapped Penguins project has said the holder will be able to “unwrap” their token into the original NFT at any time.
 
 
