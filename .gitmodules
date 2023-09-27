@@ -10,3 +10,6 @@
 [submodule "2_week/lib/erc1363-payable-token"]
 	path = 2_week/lib/erc1363-payable-token
 	url = https://github.com/git-josip/erc1363-payable-token
+[submodule "3_week/lib/forge-std"]
+	path = 3_week/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
