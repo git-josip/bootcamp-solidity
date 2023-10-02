@@ -17,11 +17,13 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
     using SafeERC20 for ERC20;
     using Address for address;
 
+    string public constant NAME = "Uniswap V2";
+    string public constant SYMBOL = "UNI-V2";
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+    uint256 public constant MINIMUM_LIQUIDITY = 10 ** 3;
+
     mapping(address => bool) public supportedTokens;
     uint256 public fee; //  1 == 0.01 %.
-
-    uint256 public constant MINIMUM_LIQUIDITY = 10 ** 3;
 
     address public factory;
     address public token0;
@@ -36,29 +38,29 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
     uint256 public kLast; // reserve0 * reserve1, as of immediately after the most recent liquidity event
 
     /**
-     * @param _name Token name
-     * @param _symbol Token symbol
      * @param _fee The percentage of the flash loan `amount` that needs to be repaid, in addition to `amount`.
      */
-    constructor(string memory _name, string memory _symbol, uint256 _fee) ERC20(_name, _symbol) {
+    constructor(uint256 _fee) ERC20(NAME, SYMBOL) {
         require(
             ERC165(address(msg.sender)).supportsInterface(type(IUniswapV2Factory).interfaceId),
             "Creator must implement IUniswapV2Factory interface."
         );
 
-        fee = _fee;
-
         factory = msg.sender;
+        fee = _fee;
     }
 
     // called once by the factory at time of deployment
-    function initialize(address _token0, address _token1) external {
+    function initialize(address _token0, address _token1, uint256 _flashLoanFee) external {
         require(msg.sender == factory, "UniswapV2: FORBIDDEN"); // sufficient check
         require(_token0.isContract(), "UniswapV2: token0 address must be contract"); // sufficient check
         require(_token1.isContract(), "UniswapV2: token1 address must be contract"); // sufficient check
 
         token0 = _token0;
+        supportedTokens[_token0] = true;
         token1 = _token1;
+        supportedTokens[_token1] = true;
+        fee = _flashLoanFee;
     }
 
     function getReserves() public view returns (UD60x18 _reserve0, UD60x18 _reserve1, uint32 _blockTimestampLast) {
@@ -176,10 +178,11 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external nonReentrant {
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata /*data*/ ) external nonReentrant {
         require(amount0Out > 0 || amount1Out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
         (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
         require(amount0Out < _reserve0.unwrap() && amount1Out < _reserve1.unwrap(), "UniswapV2: INSUFFICIENT_LIQUIDITY");
+        require(!(amount0Out > 0 && amount1Out > 0), "out1 and out2 can not be > 0 at same time.");
 
         uint256 balance0;
         uint256 balance1;
@@ -210,6 +213,65 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
 
         _update(balance0, balance1, _reserve0.unwrap(), _reserve1.unwrap());
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
+    }
+
+    // this low-level function should be called from a contract which performs important safety checks
+    function swap2(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata /*data*/ )
+        external
+        nonReentrant
+    {
+        require(amount0Out > 0 || amount1Out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
+        (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
+        require(amount0Out < _reserve0.unwrap() && amount1Out < _reserve1.unwrap(), "UniswapV2: INSUFFICIENT_LIQUIDITY");
+        require(!(amount0Out > 0 && amount1Out > 0), "out1 and out2 can not be > 0 at same time.");
+
+        uint256 _amount0Out = amount0Out;
+        uint256 _amount1Out = amount1Out;
+        uint256 balance0;
+        uint256 balance1;
+        {
+            // scope for _token{0,1}, avoids stack too deep errors
+            address _token0 = token0;
+            address _token1 = token1;
+            require(to != _token0 && to != _token1, "UniswapV2: INVALID_TO");
+            balance0 = IERC20(_token0).balanceOf(address(this));
+            balance1 = IERC20(_token1).balanceOf(address(this));
+        }
+        uint256 amount0In =
+            balance0 > _reserve0.unwrap() - _amount0Out ? balance0 - (_reserve0.unwrap() - _amount0Out) : 0;
+        uint256 amount1In =
+            balance1 > _reserve1.unwrap() - _amount1Out ? balance1 - (_reserve1.unwrap() - _amount1Out) : 0;
+        require(amount0In > 0 || amount1In > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+
+        uint256 requiredAmountIn;
+        uint256 tokenAmountToTransfer;
+        address tokenToTransfer;
+        if (_amount0Out > 0) {
+            requiredAmountIn = calculateAmountIn(_amount0Out, _reserve1, _reserve0);
+            require(amount1In == requiredAmountIn, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT transffered.");
+            tokenToTransfer = token0;
+            tokenAmountToTransfer = _amount0Out;
+        }
+        if (_amount1Out > 0) {
+            requiredAmountIn = calculateAmountIn(_amount1Out, _reserve0, _reserve1);
+            require(amount0In == requiredAmountIn, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT transffered.");
+            tokenToTransfer = token1;
+            tokenAmountToTransfer = _amount1Out;
+        }
+
+        {
+            // scope for reserve{0,1}Adjusted, avoids stack too deep errors
+            uint256 balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
+            uint256 balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
+            require(
+                balance0Adjusted * balance1Adjusted >= _reserve0.unwrap() * _reserve1.unwrap() * 1000 ** 2,
+                "UniswapV2: K"
+            );
+        }
+
+        _update(balance0, balance1, _reserve0.unwrap(), _reserve1.unwrap());
+        ERC20(tokenToTransfer).safeTransfer(to, tokenAmountToTransfer);
+        emit Swap(msg.sender, amount0In, amount1In, _amount0Out, _amount1Out, to);
     }
 
     // force balances to match reserves
@@ -279,7 +341,7 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
      * @dev The fee to be charged for a given loan. Internal function with no checks.
      * @return The amount of `token` to be charged for the loan, on top of the returned principal.
      */
-    function _flashFee(address, /*token*/ uint256 /*amount*/ ) internal view returns (uint256) {
+    function _flashFee(address, /*token*/ uint256 /*amount*/ ) internal pure returns (uint256) {
         return 0;
     }
 
@@ -297,5 +359,20 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165) returns (bool) {
         return interfaceId == type(IERC3156FlashLender).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
+    function calculateAmountIn(uint256 amountOut, UD60x18 reserveIn, UD60x18 reserveOut)
+        internal
+        pure
+        returns (uint256 amountIn)
+    {
+        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(reserveIn.unwrap() > 0 && reserveOut.unwrap() > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
+        // UD60x18
+        UD60x18 amountOutAsUD60x18 = UD60x18.wrap(amountOut);
+        UD60x18 numerator = reserveIn.mul(amountOutAsUD60x18).mul(UD60x18.wrap(1000));
+        UD60x18 denominator = reserveOut.sub(amountOutAsUD60x18).mul(UD60x18.wrap(997));
+        amountIn = ((numerator.div(denominator)).add(UD60x18.wrap(1))).unwrap();
     }
 }
