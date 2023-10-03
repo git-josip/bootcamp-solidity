@@ -79,7 +79,15 @@ contract UniswapTest is Test {
         token2.mint(user2, 10_000 ether);
     }
 
-    function test_FactoryShouldBeAbleTOINitializePair() public {
+    function test_FactoryShouldBeAbleToInitializePair() public {
+        // setup
+        vm.startPrank(user1);
+        vm.deal(user1, 10 ether);
+
+        uniswapV2Factory.createPair(address(token1), address(token2));
+    }
+
+    function test_UserShouldBeAbleToAddLiquidity() public {
         // setup
         vm.startPrank(user1);
         vm.deal(user1, 10 ether);
