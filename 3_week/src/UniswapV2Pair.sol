@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+pragma solidity 0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,6 +12,8 @@ import {Math} from "openzeppelin/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+
+contract PermanentTokenLock {}
 
 contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
     using SafeERC20 for ERC20;
@@ -28,6 +30,7 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
     address public factory;
     address public token0;
     address public token1;
+    PermanentTokenLock public immutable permanentTokenLockContract;
 
     UD60x18 private reserve0;
     UD60x18 private reserve1;
@@ -48,6 +51,7 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
 
         factory = msg.sender;
         fee = _fee;
+        permanentTokenLockContract = new PermanentTokenLock();
     }
 
     // called once by the factory at time of deployment
@@ -137,7 +141,7 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         uint256 _totalSupply = totalSupply(); // gas savings, must be defined here since totalSupply can update in _mintFee
         if (_totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
-            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
+            _mint(address(permanentTokenLockContract), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
             liquidity =
                 Math.min((amount0 * _totalSupply) / _reserve0.unwrap(), (amount1 * _totalSupply) / _reserve1.unwrap());

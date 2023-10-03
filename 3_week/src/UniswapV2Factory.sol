@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+pragma solidity 0.8.20;
 
 import {UniswapV2Pair} from "./UniswapV2Pair.sol";
 import {IUniswapV2Factory} from "./interfaces/IUniswapV2Factory.sol";
 import {ERC165} from "openzeppelin/utils/introspection/ERC165.sol";
+import {console} from "forge-std/console.sol";
 
 contract UniswapV2Factory is IUniswapV2Factory, ERC165 {
     uint256 public constant FLASH_LOADN_FEE = 0;
@@ -27,11 +28,14 @@ contract UniswapV2Factory is IUniswapV2Factory, ERC165 {
         require(token0 != address(0), "UniswapV2: ZERO_ADDRESS");
         require(getPair[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"); // single check is sufficient
         bytes memory bytecode = type(UniswapV2Pair).creationCode;
+        bytes memory _bytcodeWithConstuctor = abi.encodePacked(bytecode, abi.encode(FLASH_LOADN_FEE));
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
-            pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
+            pair := create2(0, add(_bytcodeWithConstuctor, 32), mload(_bytcodeWithConstuctor), salt)
         }
+
         UniswapV2Pair(pair).initialize(token0, token1, FLASH_LOADN_FEE);
+
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);
