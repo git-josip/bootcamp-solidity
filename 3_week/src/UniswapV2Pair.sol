@@ -219,65 +219,6 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
     }
 
-    // this low-level function should be called from a contract which performs important safety checks
-    function swap2(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata /*data*/ )
-        external
-        nonReentrant
-    {
-        require(amount0Out > 0 || amount1Out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
-        (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
-        require(amount0Out < _reserve0.unwrap() && amount1Out < _reserve1.unwrap(), "UniswapV2: INSUFFICIENT_LIQUIDITY");
-        require(!(amount0Out > 0 && amount1Out > 0), "out1 and out2 can not be > 0 at same time.");
-
-        uint256 _amount0Out = amount0Out;
-        uint256 _amount1Out = amount1Out;
-        uint256 balance0;
-        uint256 balance1;
-        {
-            // scope for _token{0,1}, avoids stack too deep errors
-            address _token0 = token0;
-            address _token1 = token1;
-            require(to != _token0 && to != _token1, "UniswapV2: INVALID_TO");
-            balance0 = IERC20(_token0).balanceOf(address(this));
-            balance1 = IERC20(_token1).balanceOf(address(this));
-        }
-        uint256 amount0In =
-            balance0 > _reserve0.unwrap() - _amount0Out ? balance0 - (_reserve0.unwrap() - _amount0Out) : 0;
-        uint256 amount1In =
-            balance1 > _reserve1.unwrap() - _amount1Out ? balance1 - (_reserve1.unwrap() - _amount1Out) : 0;
-        require(amount0In > 0 || amount1In > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
-
-        uint256 requiredAmountIn;
-        uint256 tokenAmountToTransfer;
-        address tokenToTransfer;
-        if (_amount0Out > 0) {
-            requiredAmountIn = calculateAmountIn(_amount0Out, _reserve1, _reserve0);
-            require(amount1In == requiredAmountIn, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT transffered.");
-            tokenToTransfer = token0;
-            tokenAmountToTransfer = _amount0Out;
-        }
-        if (_amount1Out > 0) {
-            requiredAmountIn = calculateAmountIn(_amount1Out, _reserve0, _reserve1);
-            require(amount0In == requiredAmountIn, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT transffered.");
-            tokenToTransfer = token1;
-            tokenAmountToTransfer = _amount1Out;
-        }
-
-        {
-            // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-            uint256 balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
-            uint256 balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
-            require(
-                balance0Adjusted * balance1Adjusted >= _reserve0.unwrap() * _reserve1.unwrap() * 1000 ** 2,
-                "UniswapV2: K"
-            );
-        }
-
-        _update(balance0, balance1, _reserve0.unwrap(), _reserve1.unwrap());
-        ERC20(tokenToTransfer).safeTransfer(to, tokenAmountToTransfer);
-        emit Swap(msg.sender, amount0In, amount1In, _amount0Out, _amount1Out, to);
-    }
-
     // force balances to match reserves
     function skim(address to) external nonReentrant {
         address _token0 = token0; // gas savings
@@ -363,20 +304,5 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165) returns (bool) {
         return interfaceId == type(IERC3156FlashLender).interfaceId || super.supportsInterface(interfaceId);
-    }
-
-    // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
-    function calculateAmountIn(uint256 amountOut, UD60x18 reserveIn, UD60x18 reserveOut)
-        internal
-        pure
-        returns (uint256 amountIn)
-    {
-        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
-        require(reserveIn.unwrap() > 0 && reserveOut.unwrap() > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
-        // UD60x18
-        UD60x18 amountOutAsUD60x18 = UD60x18.wrap(amountOut);
-        UD60x18 numerator = reserveIn.mul(amountOutAsUD60x18).mul(UD60x18.wrap(1000));
-        UD60x18 denominator = reserveOut.sub(amountOutAsUD60x18).mul(UD60x18.wrap(997));
-        amountIn = ((numerator.div(denominator)).add(UD60x18.wrap(1))).unwrap();
     }
 }
