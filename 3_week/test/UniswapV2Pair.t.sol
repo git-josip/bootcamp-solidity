@@ -162,6 +162,7 @@ contract UniswapV2PairTest is Test {
         uniswapV2Pair.mint(user1);
 
         assertEq(expectedLiquidity, uniswapV2Pair.totalSupply());
+        assertEq(expectedLiquidity - uniswapV2Pair.MINIMUM_LIQUIDITY(), ERC20(uniswapV2PairAddress).balanceOf(user1));
     }
 
     function test_SwapTokenShouldSucceed() public {
@@ -355,7 +356,7 @@ contract UniswapV2PairTest is Test {
         // setup
         vm.deal(user1, 10 ether);
         vm.startPrank(user1);
-
+ 
         addLiquidity(1000 ether, 1000 ether);
         TestFlashBorrower flashBorrower = new TestFlashBorrower(IERC3156FlashLender(uniswapV2PairAddress));
 

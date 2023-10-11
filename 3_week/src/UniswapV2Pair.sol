@@ -134,6 +134,8 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
         uint256 balance0 = IERC20(token0).balanceOf(address(this));
         uint256 balance1 = IERC20(token1).balanceOf(address(this));
+
+        // token needs to be deposited to contract proor calling this method
         uint256 amount0 = balance0 - _reserve0.unwrap();
         uint256 amount1 = balance1 - _reserve1.unwrap();
 
@@ -145,6 +147,9 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         } else {
             liquidity =
                 Math.min((amount0 * _totalSupply) / _reserve0.unwrap(), (amount1 * _totalSupply) / _reserve1.unwrap());
+
+                // we need to check that ratio is preserved when adding tokens dx/X = dy/Y
+                require((UD60x18.wrap(amount0).div(_reserve0)).unwrap() == (UD60x18.wrap(amount0).div(_reserve0)).unwrap());
         }
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
         _mint(to, liquidity);
@@ -186,7 +191,7 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         require(amount0Out > 0 || amount1Out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
         (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
         require(amount0Out < _reserve0.unwrap() && amount1Out < _reserve1.unwrap(), "UniswapV2: INSUFFICIENT_LIQUIDITY");
-        require(!(amount0Out > 0 && amount1Out > 0), "out1 and out2 can not be > 0 at same time.");
+        require(!(amount0Out > 0 && amount1Out > 0), "out1 & out2 can't be > 0 at same time");
 
         uint256 balance0;
         uint256 balance1;
@@ -195,8 +200,8 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
             address _token0 = token0;
             address _token1 = token1;
             require(to != _token0 && to != _token1, "UniswapV2: INVALID_TO");
-            if (amount0Out > 0) ERC20(_token0).safeTransfer(to, amount0Out); // optimistically transfer tokens
-            if (amount1Out > 0) ERC20(_token1).safeTransfer(to, amount1Out); // optimistically transfer tokens
+            if (amount0Out > 0) ERC20(_token0).safeTransfer(to, amount0Out);
+            if (amount1Out > 0) ERC20(_token1).safeTransfer(to, amount1Out);
             balance0 = IERC20(_token0).balanceOf(address(this));
             balance1 = IERC20(_token1).balanceOf(address(this));
         }
@@ -207,8 +212,12 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         require(amount0In > 0 || amount1In > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
         {
             // scope for reserve{0,1}Adjusted, avoids stack too deep errors
+            // 3% is deducted from balance.
             uint256 balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
             uint256 balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
+
+            // K (after) >= K (before)
+            // this is checked after fee is deducted. 
             require(
                 balance0Adjusted * balance1Adjusted >= _reserve0.unwrap() * _reserve1.unwrap() * 1000 ** 2,
                 "UniswapV2: K"
