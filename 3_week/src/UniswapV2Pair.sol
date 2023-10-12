@@ -108,7 +108,9 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         emit Sync(reserve0, reserve1);
     }
 
-    // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
+    // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k). And
+    // to caclulate this only once on mint or burn and not on all swaps different formula is used.
+    // kLast is K when aster last time fee has been minted and K is current K.
     function _mintFee(uint256 _reserve0, uint256 _reserve1) private returns (bool feeOn) {
         address feeTo = IUniswapV2Factory(factory).feeTo();
         feeOn = feeTo != address(0);
@@ -148,8 +150,8 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
             liquidity =
                 Math.min((amount0 * _totalSupply) / _reserve0.unwrap(), (amount1 * _totalSupply) / _reserve1.unwrap());
 
-                // we need to check that ratio is preserved when adding tokens dx/X = dy/Y
-                require((UD60x18.wrap(amount0).div(_reserve0)).unwrap() == (UD60x18.wrap(amount0).div(_reserve0)).unwrap());
+            // we need to check that ratio is preserved when adding tokens dx/X = dy/Y
+            require((UD60x18.wrap(amount0).div(_reserve0)).unwrap() == (UD60x18.wrap(amount0).div(_reserve0)).unwrap());
         }
         require(liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
         _mint(to, liquidity);
@@ -159,7 +161,6 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         emit Mint(msg.sender, amount0, amount1);
     }
 
-    // this low-level function should be called from a contract which performs important safety checks
     function burn(address to) external nonReentrant returns (uint256 amount0, uint256 amount1) {
         (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
         address _token0 = token0; // gas savings
@@ -169,24 +170,25 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
         uint256 liquidity = balanceOf(address(this));
 
         bool feeOn = _mintFee(_reserve0.unwrap(), _reserve1.unwrap());
-        uint256 _totalSupply = totalSupply(); // gas savings, must be defined here since totalSupply can update in _mintFee
-        amount0 = (liquidity * balance0) / _totalSupply; // using balances ensures pro-rata distribution
-        amount1 = (liquidity * balance1) / _totalSupply; // using balances ensures pro-rata distribution
+        uint256 _totalSupply = totalSupply();
+        amount0 = (liquidity * balance0) / _totalSupply; // calculate amount based on liguidity share
+        amount1 = (liquidity * balance1) / _totalSupply; // calculate amount based on liguidity share
         require(amount0 > 0 && amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED");
         _burn(address(this), liquidity);
 
+        // transfer tokens
         ERC20(_token0).safeTransfer(to, amount0);
         ERC20(_token1).safeTransfer(to, amount1);
 
+        // calculate new balance
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
 
         _update(balance0, balance1, _reserve0.unwrap(), _reserve1.unwrap());
-        if (feeOn) kLast = reserve0.unwrap() * reserve1.unwrap(); // reserve0 and reserve1 are up-to-date
+        if (feeOn) kLast = reserve0.unwrap() * reserve1.unwrap(); // calculate kLast for fee calculation
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
-    // this low-level function should be called from a contract which performs important safety checks
     function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata /*data*/ ) external nonReentrant {
         require(amount0Out > 0 || amount1Out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
         (UD60x18 _reserve0, UD60x18 _reserve1,) = getReserves(); // gas savings
@@ -209,15 +211,16 @@ contract UniswapV2Pair is ERC20, ERC165, IERC3156FlashLender, ReentrancyGuard {
             balance0 > _reserve0.unwrap() - amount0Out ? balance0 - (_reserve0.unwrap() - amount0Out) : 0;
         uint256 amount1In =
             balance1 > _reserve1.unwrap() - amount1Out ? balance1 - (_reserve1.unwrap() - amount1Out) : 0;
-        require(amount0In > 0 || amount1In > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+        if (amount0Out > 0) require(amount1In > 0 && amount0In == 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT token1");
+        if (amount1Out > 0) require(amount0In > 0 && amount1In == 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT token0");
         {
             // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-            // 3% is deducted from balance.
+            // 0.3% is deducted from balance
             uint256 balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
             uint256 balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
 
             // K (after) >= K (before)
-            // this is checked after fee is deducted. 
+            // this is checked after fee is deducted.
             require(
                 balance0Adjusted * balance1Adjusted >= _reserve0.unwrap() * _reserve1.unwrap() * 1000 ** 2,
                 "UniswapV2: K"

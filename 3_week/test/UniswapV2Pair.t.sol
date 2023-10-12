@@ -356,7 +356,7 @@ contract UniswapV2PairTest is Test {
         // setup
         vm.deal(user1, 10 ether);
         vm.startPrank(user1);
- 
+
         addLiquidity(1000 ether, 1000 ether);
         TestFlashBorrower flashBorrower = new TestFlashBorrower(IERC3156FlashLender(uniswapV2PairAddress));
 
