@@ -1,0 +1,5 @@
+testMode: property
+
+testLimit: 500000
+
+shrinkLimit: 20000

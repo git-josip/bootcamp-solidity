@@ -43,6 +43,10 @@ amount = 45
 
 We need to send in last step 45 Token2 to drain all Token1.
 
+## Hardhat
+Run: 
+- `npm install`
+- `npx hardhat test --verbose`
 
 
 

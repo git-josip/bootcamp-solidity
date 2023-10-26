@@ -1,7 +1,10 @@
 ## Token Whale Challenge
 
-
 ## Echinda
+Run Echidna:
+```
+docker run --platform=linux/amd64 --rm -it -v `pwd`:/src ghcr.io/crytic/echidna/echidna bash -c "solc-select install 0.7.0 && solc-select use  0.7.0 && echidna --contract TokenWhaleChallengeEchidna src/contracts/TokenWhaleChallengeEchidna.sol --config src/config.yaml"
+```
 
 Has broke contract.
 
@@ -12,6 +15,11 @@ Has broke contract.
 - which is resulting `B` has now huge aount of tokens and can send that tokens to anyone.
 
 ![Echinda findings](images/TokenWhaleChallengeEchidna_found_issue.png)
+
+## Hardhat
+Run: 
+- `npm install`
+- `npx hardhat test --verbose`
 
 
 

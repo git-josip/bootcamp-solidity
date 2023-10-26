@@ -1,9 +1,0 @@
-testMode: property
-
-# testLimit: 500000
-
-corpusDir: echidna-coverage
-
-shrinkLimit: 20000
-
-workers: 5
