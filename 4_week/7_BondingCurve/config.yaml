@@ -1,7 +1,5 @@
 testMode: assertion
 
-cryticArgs: ['--solc-remaps', '@=node_modules/@ payabletoken=node_modules/payabletoken']
+cryticArgs: ['--solc-remaps', '@=src/node_modules/@ payabletoken=src/node_modules/payabletoken']
 
 shrinkLimit: 20000
-
-workers: 5
