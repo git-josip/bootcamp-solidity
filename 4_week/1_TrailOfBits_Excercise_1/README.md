@@ -1,4 +1,4 @@
-## LinearBondingCurve from Week1
+# TrailOfBits Excercise 1
 
 Run Echidna:
 ```
