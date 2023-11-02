@@ -72,6 +72,8 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
         uint256 rewardAmount = calculateReward(_tokenId);
 
         delete nftDeposits[_tokenId];
+        // https://github.com/foundry-rs/foundry/issues/3600
+        // this is issue for code coverage showing that is not covered and both test are present.
         if (rewardAmount > 0) {
             rewardTokenContract.mint(_msgSender(), rewardAmount);
         }
