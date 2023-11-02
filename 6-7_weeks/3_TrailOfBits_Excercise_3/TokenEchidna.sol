@@ -11,7 +11,7 @@ import "./Mintable.sol";
 contract TokenEchidna is MintableToken {
     address echidna = msg.sender;
 
-    constructor() public MintableToken(10_000) {
+    constructor() MintableToken(10_000) {
         owner = echidna;
     }
 
