@@ -31,3 +31,6 @@
 [submodule "8-9_weeks/8_week/4_RareSkills_Riddles_ERC1155/lib/forge-std"]
 	path = 8-9_weeks/8_week/4_RareSkills_Riddles_ERC1155/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "8-9_weeks/8_week/4_RareSkills_Riddles_ERC1155/lib/openzeppelin-contracts"]
+	path = 8-9_weeks/8_week/4_RareSkills_Riddles_ERC1155/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts

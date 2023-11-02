@@ -14,6 +14,7 @@ contract PredictTheFutureTest is Test {
         // Deploy contracts
         predictTheFuture = (new PredictTheFuture){value: 1 ether}();
         exploitContract = new ExploitContract(predictTheFuture);
+        user = vm.addr(1);
     }
 
     function testGuess() public {
