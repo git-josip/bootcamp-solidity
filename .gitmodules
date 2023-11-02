@@ -19,3 +19,6 @@
 [submodule "3_week/lib/prb-math"]
 	path = 3_week/lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
+[submodule "8-9_weeks/8_week/1_CTE_guess_the_secret_number/lib/forge-std"]
+	path = 8-9_weeks/8_week/1_CTE_guess_the_secret_number/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
