@@ -4,8 +4,8 @@ pragma solidity 0.8.21;
 import {ERC1363} from "@payabletoken/contracts/token/ERC1363/ERC1363.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
-import {ERC165} from "openzeppelin/utils/introspection/ERC165.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 

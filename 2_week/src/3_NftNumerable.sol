@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.21;
 
-import {ERC721} from "openzeppelin/token/ERC721/ERC721.sol";
-import {ERC721Enumerable} from "openzeppelin/token/ERC721/extensions/ERC721Enumerable.sol";
-import {Ownable2Step} from "openzeppelin/access/Ownable2Step.sol";
-import {Ownable} from "openzeppelin/access/Ownable2Step.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
  * @title ERC721Enumerable non fungible token
