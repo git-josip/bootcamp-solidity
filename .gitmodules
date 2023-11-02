@@ -25,3 +25,6 @@
 [submodule "8-9_weeks/8_week/2_CTE_Guess_the_new_number/lib/forge-std"]
 	path = 8-9_weeks/8_week/2_CTE_Guess_the_new_number/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "8-9_weeks/8_week/3_predict_the_future/lib/forge-std"]
+	path = 8-9_weeks/8_week/3_predict_the_future/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
