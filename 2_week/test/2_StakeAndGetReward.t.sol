@@ -6,8 +6,10 @@ import {Test} from "forge-std/Test.sol";
 import {StakeAndGetReward} from "../src/2_StakeAndGetReward.sol";
 import {RewardToken} from "../src/2_RewardToken.sol";
 import {NftStakingToken} from "../src/2_NftStakingToken.sol";
+import {IRewardToken} from "../src/2_RewardToken.sol";
 import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC1363} from "@payabletoken/contracts/token/ERC1363/IERC1363.sol";
 
 contract StakeAndGetRewardTest is Test {
     StakeAndGetReward public stakeAndGetReward;
@@ -60,6 +62,109 @@ contract StakeAndGetRewardTest is Test {
             nftStakingToken.ownerOf(mintedTokenId),
             "StakeAndGetReward contract has to be owner of staked token."
         );
+    }
+
+    function test_StakeShouldFailIfOwnerIsNotMsSender() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.deal(user2, 10 ether);
+        vm.startPrank(user2);
+
+        uint256 mintedTokenId = nftStakingToken.mint{value: 0.01 ether}();
+        assertEq(user2, nftStakingToken.ownerOf(mintedTokenId), "User has to be owner of newly minted token.");
+
+        vm.startPrank(user1);
+        // test execution
+        vm.expectRevert(bytes("Sender must be owner of NFT which wants to stake."));
+        stakeAndGetReward.stake(mintedTokenId);
+    }
+
+    function test_StakeShouldFailIfRewardTokenIsNotSet() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.deal(user2, 10 ether);
+        vm.startPrank(user1);
+
+        NftStakingToken newNftStakingToken = new NftStakingToken("RareSkills NFT", "RNFT", 20);
+        StakeAndGetReward newStakeAndGetReward = new StakeAndGetReward(newNftStakingToken);
+
+        uint256 mintedTokenId = newNftStakingToken.mint{value: 0.01 ether}();
+        assertEq(user1, newNftStakingToken.ownerOf(mintedTokenId), "User has to be owner of newly minted token.");
+
+        // test execution
+        vm.expectRevert(bytes("RewardToken not set."));
+        newStakeAndGetReward.stake(mintedTokenId);
+    }
+
+    function test_StakeShouldFailIfTokenAlreadyStaked() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        uint256 mintedTokenId = nftStakingToken.mint{value: 0.01 ether}();
+        assertEq(user1, nftStakingToken.ownerOf(mintedTokenId), "User has to be owner of newly minted token.");
+        nftStakingToken.approve(address(stakeAndGetReward), mintedTokenId);
+        stakeAndGetReward.stake(mintedTokenId);
+
+        // test execution
+        vm.expectRevert(bytes("Token must not be already staked."));
+        stakeAndGetReward.stake(mintedTokenId);
+    }
+
+    function test_SetRewardTokenContractShouldFailIfAddressIsNotContract() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        NftStakingToken newNftStakingToken = new NftStakingToken("RareSkills NFT", "RNFT", 20);
+        StakeAndGetReward newStakeAndGetReward = new StakeAndGetReward(newNftStakingToken);
+        // test execution
+        vm.expectRevert(bytes("RewardTokenContract must be contract not external account."));
+        newStakeAndGetReward.setRewardTokenContract(IRewardToken(user2));
+    }
+
+    function test_SetRewardTokenContractShouldFailIfItNotSupportsInterfaceIERC1363() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        NftStakingToken newNftStakingToken = new NftStakingToken("RareSkills NFT", "RNFT", 20);
+        StakeAndGetReward newStakeAndGetReward = new StakeAndGetReward(newNftStakingToken);
+        // test execution
+        vm.expectRevert(bytes("Contract must implement IERC1363 interafce."));
+        newStakeAndGetReward.setRewardTokenContract(IRewardToken(address(newNftStakingToken)));
+    }
+
+    function test_SetRewardTokenContractShouldSucceedForValidContract() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        NftStakingToken newNftStakingToken = new NftStakingToken("RareSkills NFT", "RNFT", 20);
+        StakeAndGetReward newStakeAndGetReward = new StakeAndGetReward(newNftStakingToken);
+        RewardToken newRewardToken = new RewardToken(IERC721Receiver(address(stakeAndGetReward)));
+        // test execution
+        newStakeAndGetReward.setRewardTokenContract(newRewardToken);
+
+        assertEq(address(newRewardToken), address(newStakeAndGetReward.rewardTokenContract()), "Reward token should be one that is set before.");
+    }
+
+    function test_SupportsInterfaceShouldReturnTrueForIERC721ReceiverInterface() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        bool doesSupport = stakeAndGetReward.supportsInterface(type(IERC721Receiver).interfaceId);
+        assertTrue(doesSupport);
+    }
+
+    function test_SupportsInterfaceShouldReturnFalseForIERC1363Interface() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        bool doesSupport = stakeAndGetReward.supportsInterface(type(IERC1363).interfaceId);
+        assertFalse(doesSupport);
     }
 
     function test_AddressShouldBeAbleToStakeNftAndCalculateRewards() public {
@@ -316,5 +421,80 @@ contract StakeAndGetRewardTest is Test {
             rewardToken.balanceOf(address(user1)),
             "User has to be in possession collected reward after unstake."
         );
+    }
+
+    function test_IfAddressSendsNFTToStakeAndRewardContractShouldBeAbleToUnstakeItIfThereIsNoReward() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        // test execution
+        uint256 mintedTokenId = nftStakingToken.mint{value: 0.01 ether}();
+        assertEq(user1, nftStakingToken.ownerOf(mintedTokenId), "User has to be owner of newly minted token.");
+        assertEq(
+            0.01 ether, address(nftStakingToken).balance, "NftStakingToken has to have receive amount for nft mint."
+        );
+
+        nftStakingToken.safeTransferFrom(user1, address(stakeAndGetReward), mintedTokenId);
+        assertEq(
+            address(stakeAndGetReward),
+            nftStakingToken.ownerOf(mintedTokenId),
+            "StakeAndGetReward contract has to be owner of staked token."
+        );
+
+        bool unstakeStatus = stakeAndGetReward.unstake(mintedTokenId);
+        assertEq(true, unstakeStatus, "Unstake should be successful.");
+        assertEq(
+            0,
+            rewardToken.balanceOf(address(user1)),
+            "User must not have any reward."
+        );
+    }
+
+    function test_IfAddressSendsNFTToStakeAndRewardContractCollectRewardShouldFailIfThereIsNoReward() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        // test execution
+        uint256 mintedTokenId = nftStakingToken.mint{value: 0.01 ether}();
+        assertEq(user1, nftStakingToken.ownerOf(mintedTokenId), "User has to be owner of newly minted token.");
+        assertEq(
+            0.01 ether, address(nftStakingToken).balance, "NftStakingToken has to have receive amount for nft mint."
+        );
+
+        nftStakingToken.safeTransferFrom(user1, address(stakeAndGetReward), mintedTokenId);
+        assertEq(
+            address(stakeAndGetReward),
+            nftStakingToken.ownerOf(mintedTokenId),
+            "StakeAndGetReward contract has to be owner of staked token."
+        );
+
+        vm.expectRevert(bytes("reward must be > 0"));
+        stakeAndGetReward.collectReward(mintedTokenId);
+    }
+
+    function test_calculateRewardShouldFailIfTokenIsNotStaked() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        // test execution
+        uint256 mintedTokenId = nftStakingToken.mint{value: 0.01 ether}();
+
+        vm.expectRevert(bytes("TokenId is not staked with this contract."));
+        stakeAndGetReward.calculateReward(mintedTokenId);
+    }
+
+    function test_onERC721ReceivedShouldFailIfContractIsNotOwnerOfToken() public {
+        // setup
+        vm.deal(user1, 10 ether);
+        vm.startPrank(user1);
+
+        // test execution
+        uint256 mintedTokenId = nftStakingToken.mint{value: 0.01 ether}();
+        
+        vm.expectRevert(bytes("TokenId is not staked with this contract."));
+        stakeAndGetReward.onERC721Received(user1, user2, mintedTokenId, '');
     }
 }

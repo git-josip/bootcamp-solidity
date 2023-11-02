@@ -1,0 +1,138 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - lcov.info - src/src/2_RewardToken.sol</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/src</a> - 2_RewardToken.sol<span style="font-size: 80%;"> (source / <a href="2_RewardToken.sol.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">lcov.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">4</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2023-11-02 13:52:13</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="headerItem">Branches:</td>
+            <td class="headerCovTableEntryLo">50.0&nbsp;%</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">2</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">             Branch data     Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>                 :             : // SPDX-License-Identifier: MIT</span>
+<span id="L2"><span class="lineNum">       2</span>                 :             : pragma solidity 0.8.21;</span>
+<span id="L3"><span class="lineNum">       3</span>                 :             : </span>
+<span id="L4"><span class="lineNum">       4</span>                 :             : import {ERC1363} from &quot;@payabletoken/contracts/token/ERC1363/ERC1363.sol&quot;;</span>
+<span id="L5"><span class="lineNum">       5</span>                 :             : import {ERC20} from &quot;@openzeppelin/contracts/token/ERC20/ERC20.sol&quot;;</span>
+<span id="L6"><span class="lineNum">       6</span>                 :             : import {IERC20} from &quot;@openzeppelin/contracts/token/ERC20/IERC20.sol&quot;;</span>
+<span id="L7"><span class="lineNum">       7</span>                 :             : import {IERC721Receiver} from &quot;@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol&quot;;</span>
+<span id="L8"><span class="lineNum">       8</span>                 :             : import {ERC165} from &quot;@openzeppelin/contracts/utils/introspection/ERC165.sol&quot;;</span>
+<span id="L9"><span class="lineNum">       9</span>                 :             : import &quot;@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol&quot;;</span>
+<span id="L10"><span class="lineNum">      10</span>                 :             : import &quot;@openzeppelin/contracts/utils/Address.sol&quot;;</span>
+<span id="L11"><span class="lineNum">      11</span>                 :             : </span>
+<span id="L12"><span class="lineNum">      12</span>                 :             : interface IRewardToken {</span>
+<span id="L13"><span class="lineNum">      13</span>                 :             :     function mint(address _to, uint256 _amount) external returns (bool success);</span>
+<span id="L14"><span class="lineNum">      14</span>                 :             : }</span>
+<span id="L15"><span class="lineNum">      15</span>                 :             : </span>
+<span id="L16"><span class="lineNum">      16</span>                 :             : /**</span>
+<span id="L17"><span class="lineNum">      17</span>                 :             :  * @title ERC1363 fungible token which will be used for NFT staking reward</span>
+<span id="L18"><span class="lineNum">      18</span>                 :             :  * @author Josip Medic</span>
+<span id="L19"><span class="lineNum">      19</span>                 :             :  * @notice ERC20 token for staking reward</span>
+<span id="L20"><span class="lineNum">      20</span>                 :             :  * @dev Only stakingReward contract will be allowed to mint tokens</span>
+<span id="L21"><span class="lineNum">      21</span>                 :             :  */</span>
+<span id="L22"><span class="lineNum">      22</span>                 :             : contract RewardToken is ERC1363, IRewardToken {</span>
+<span id="L23"><span class="lineNum">      23</span>                 :             :     using SafeERC20 for ERC20;</span>
+<span id="L24"><span class="lineNum">      24</span>                 :             :     using Address for address;</span>
+<span id="L25"><span class="lineNum">      25</span>                 :             : </span>
+<span id="L26"><span class="lineNum">      26</span>                 :             :     /**</span>
+<span id="L27"><span class="lineNum">      27</span>                 :             :      * @dev Only stakingReward is allowed to mint tokens</span>
+<span id="L28"><span class="lineNum">      28</span>                 :             :      */</span>
+<span id="L29"><span class="lineNum">      29</span>                 :             :     IERC721Receiver public stakingContract;</span>
+<span id="L30"><span class="lineNum">      30</span>                 :             : </span>
+<span id="L31"><span class="lineNum">      31</span>                 :             :     constructor(IERC721Receiver _stakingContract) ERC20(&quot;Reward Staking Token&quot;, &quot;RST&quot;) {</span>
+<span id="L32"><span class="lineNum">      32</span>                 :             :         require(address(_stakingContract).isContract(), &quot;StakingContract must be contract not external account.&quot;);</span>
+<span id="L33"><span class="lineNum">      33</span>                 :             :         require(</span>
+<span id="L34"><span class="lineNum">      34</span>                 :             :             ERC165(address(_stakingContract)).supportsInterface(type(IERC721Receiver).interfaceId),</span>
+<span id="L35"><span class="lineNum">      35</span>                 :             :             &quot;Contract must implement IERC721Receiver interafce.&quot;</span>
+<span id="L36"><span class="lineNum">      36</span>                 :             :         );</span>
+<span id="L37"><span class="lineNum">      37</span>                 :             : </span>
+<span id="L38"><span class="lineNum">      38</span>                 :             :         stakingContract = _stakingContract;</span>
+<span id="L39"><span class="lineNum">      39</span>                 :             :     }</span>
+<span id="L40"><span class="lineNum">      40</span>                 :             : </span>
+<span id="L41"><span class="lineNum">      41</span>                 :             :     /**</span>
+<span id="L42"><span class="lineNum">      42</span>                 :             :      * @dev Mints `_amount` tokens and assigns them to stakingReward contract. Increasing</span>
+<span id="L43"><span class="lineNum">      43</span>                 :             :      * the total supply.</span>
+<span id="L44"><span class="lineNum">      44</span>                 :             :      * @param _amount Token amount to mint</span>
+<span id="L45"><span class="lineNum">      45</span>                 :             :      */</span>
+<span id="L46"><span class="lineNum">      46</span>                 :<span class="tlaGNC tlaBgGNC">           4 :     function mint(address _to, uint256 _amount) external returns (bool success) {</span></span>
+<span id="L47"><span class="lineNum">      47</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 4 times"> + </span>]:<span class="tlaGNC">           4 :         require(_msgSender() == address(stakingContract), &quot;Only staking contract can mint.&quot;);</span></span>
+<span id="L48"><span class="lineNum">      48</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 4 times"> + </span>]:<span class="tlaGNC">           4 :         require(_amount &gt; 0, &quot;Amount to mint needs to be bigger than 0.&quot;);</span></span>
+<span id="L49"><span class="lineNum">      49</span>                 :             : </span>
+<span id="L50"><span class="lineNum">      50</span>                 :<span class="tlaGNC">           4 :         _mint(_to, _amount);</span></span>
+<span id="L51"><span class="lineNum">      51</span>                 :<span class="tlaGNC">           4 :         success = true;</span></span>
+<span id="L52"><span class="lineNum">      52</span>                 :             :     }</span>
+<span id="L53"><span class="lineNum">      53</span>                 :             : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

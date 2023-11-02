@@ -51,10 +51,10 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
      * @param _tokenId id of minted NFT
      */
     function stake(uint256 _tokenId) external returns (bool sucess) {
+        require(nftDeposits[_tokenId].owner == address(0), "Token must not be already staked.");
         require(
             nftStakeTokenContract.ownerOf(_tokenId) == _msgSender(), "Sender must be owner of NFT which wants to stake."
         );
-        require(nftDeposits[_tokenId].owner == address(0), "Token must not be already staked.");
         require(address(rewardTokenContract) != address(0), "RewardToken not set.");
 
         nftStakeTokenContract.safeTransferFrom(_msgSender(), address(this), _tokenId);
@@ -89,11 +89,10 @@ contract StakeAndGetReward is IERC721Receiver, ERC165, Ownable2Step {
         NftDeposit storage nftDeposit = nftDeposits[_tokenId];
         require(nftDeposit.owner == _msgSender(), "Only address who initaly staked NFT can collect reward.");
         uint256 rewardAmount = calculateReward(_tokenId);
+        require(rewardAmount > 0, "reward must be > 0");
 
         nftDeposit.stakedAt = block.timestamp;
-        if (rewardAmount > 0) {
-            rewardTokenContract.mint(_msgSender(), rewardAmount);
-        }
+        rewardTokenContract.mint(_msgSender(), rewardAmount);
 
         sucess = true;
         emit RewardCollected(_msgSender(), _tokenId, rewardAmount);
