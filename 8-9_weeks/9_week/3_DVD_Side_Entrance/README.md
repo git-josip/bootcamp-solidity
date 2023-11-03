@@ -1,66 +1,28 @@
-## Foundry
+# Challenge #4 - Side Entrance
+- https://www.damnvulnerabledefi.xyz/challenges/side-entrance/
+  
+```
+A surprisingly simple pool allows anyone to deposit ETH, and withdraw it at any point in time.
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+It has 1000 ETH in balance already, and is offering free flash loans using the deposited ETH to promote their system.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+Starting with 1 ETH in balance, pass the challenge by taking all ETH from the pool.
 ```
 
-### Test
+## Solution
 
-```shell
-$ forge test
+Key is in using flash loan funds. 
+```
+function flashLoan(uint256 amount) external {
+        uint256 balanceBefore = address(this).balance;
+
+        IFlashLoanEtherReceiver(msg.sender).execute{value: amount}();
+
+        if (address(this).balance < balanceBefore)
+            revert RepayFailed();
+    }
 ```
 
-### Format
+We can see that we can take whole amount from contract balance and do something with it as long we return that amount to token balance. 
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+So plan is to take whole amount from contract (100 ether) and in callback function (IFlashLoanEtherReceiver) of our exploit contract to call `deposit` with same funds. Doing that we are returning balance to contract but we are also increaing our withdraw allowance to 100 ether, and once we execute it we will take all funds form contract.
