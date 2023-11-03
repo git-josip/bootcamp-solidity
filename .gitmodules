@@ -40,3 +40,6 @@
 [submodule "8-9_weeks/8_week/6_CTE_Predict_the_block_hash/lib/forge-std"]
 	path = 8-9_weeks/8_week/6_CTE_Predict_the_block_hash/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "8-9_weeks/8_week/7_CTE_Token_Whale_Challenge/lib/forge-std"]
+	path = 8-9_weeks/8_week/7_CTE_Token_Whale_Challenge/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
