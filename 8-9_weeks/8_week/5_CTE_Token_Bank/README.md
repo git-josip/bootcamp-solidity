@@ -1,66 +1,26 @@
-## Foundry
+# Token Bank
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+* We can see that `player`  is allowed to call `TokenBankChallenge` and withdraw half of tokens in `SimpleERC223Token` by calling challenge contract function `withdraw`, as `player` has allowance or 500k `balanceOf[player] = 500000 * 10 ** 18; // half for you`: 
 ```
+function withdraw(uint256 amount) public {
+        require(balanceOf[msg.sender] >= amount);
 
-### Test
-
-```shell
-$ forge test
+        require(token.transfer(msg.sender, amount));
+        unchecked {
+            balanceOf[msg.sender] -= amount;
+        }
+    }
 ```
+* code above is not using `Check-Effect` pattern, as it is first transfering tokens and then updating balances, so it is vulnerable to reentracy attack. 
 
-### Format
-
-```shell
-$ forge fmt
+* it is important as well that our contract implements:
 ```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
+interface ITokenReceiver {
+      function tokenFallback(
+          address from,
+          uint256 value,
+          bytes memory data
+      ) external;
+  }
 ```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+* this function will be called from token transfer and we will call `withdraw` function again until there are no tokens left, as fallback will be called on each `withdraw`, and we stop when there are no tokens left.
