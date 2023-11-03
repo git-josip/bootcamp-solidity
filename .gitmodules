@@ -49,3 +49,6 @@
 [submodule "8-9_weeks/9_week/2_CTE_Retirement_fund/lib/forge-std"]
 	path = 8-9_weeks/9_week/2_CTE_Retirement_fund/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "8-9_weeks/9_week/3_DVD_Side_Entrance/lib/forge-std"]
+	path = 8-9_weeks/9_week/3_DVD_Side_Entrance/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
