@@ -1,66 +1,22 @@
-## Foundry
+# Retirement fund
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+In `collectPenalty()` method we can see there is posibility for underflow if we manage to bring contract balance more than initial 1 ether.
 ```
+function collectPenalty() public {
+        require(msg.sender == beneficiary);
+        uint256 withdrawn = 0;
+        unchecked {
+            withdrawn += startBalance - address(this).balance;
 
-### Test
+            // an early withdrawal occurred
+            require(withdrawn > 0);
+        }
 
-```shell
-$ forge test
-```
+        // penalty is what's left
+        (bool ok, ) = msg.sender.call{value: address(this).balance}("");
+        require(ok, "Transfer to msg.sender failed");
+    }
+``` 
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+As there is no payable function to receive ether we can create attacker contract that can send ether to some address by executing `selfdestruct()`.
+````Self destruct is a built-in function in Solidity that allows you to effectively remove a contract from the blockchain and send its remaining ether to a designated recipient```
