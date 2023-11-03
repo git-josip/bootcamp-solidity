@@ -1,66 +1,20 @@
-## Foundry
+# Token Sale
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+I have used value 415992086870360064, as that is value of wei I need to send to buy huge amount of tokens. That is less than 1 ether, 0.415 ETH.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+Par of code where total is calculated can go in overflow as is in unchecked:
 ```
+ function buy(uint256 numTokens) public payable returns (uint256) {
+        uint256 total = 0;
+        unchecked {
+            total += numTokens * PRICE_PER_TOKEN;
+        }
+        require(msg.value == total);
 
-### Test
+        balanceOf[msg.sender] += numTokens;
+        return (total);
+    }
+``` 
 
-```shell
-$ forge test
-```
+In thi smethod number of tokens is multiplied by 1 ether, so in order to achieve overflow for some amount of ether, I have first divided by 1 ether and then just added 1. This resultd I need to send 415992086870360064 of wei in roder to aquired huge amount of tokens = (type(uint256).max / (1 ether)) + 1
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
