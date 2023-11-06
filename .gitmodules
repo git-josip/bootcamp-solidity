@@ -67,3 +67,6 @@
 [submodule "8-9_weeks/9_week/5_Ethernaut_20_Denial/lib/forge-std"]
 	path = 8-9_weeks/9_week/5_Ethernaut_20_Denial/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "8-9_weeks/9_week/6_Ethernaut_15_NaughtCoin/lib/forge-std"]
+	path = 8-9_weeks/9_week/6_Ethernaut_15_NaughtCoin/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
