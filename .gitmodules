@@ -82,3 +82,6 @@
 [submodule "10-11_weeks/10_week/02_DVD_3_Truster/lib/solmate"]
 	path = 10-11_weeks/10_week/02_DVD_3_Truster/lib/solmate
 	url = https://github.com/transmissions11/solmate
+[submodule "10-11_weeks/10_week/03_RS_Riddles_Overmint3/lib/forge-std"]
+	path = 10-11_weeks/10_week/03_RS_Riddles_Overmint3/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
