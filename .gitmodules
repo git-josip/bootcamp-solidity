@@ -88,3 +88,6 @@
 [submodule "10-11_weeks/10_week/03_RS_Riddles_Overmint3/lib/openzeppelin-contracts"]
 	path = 10-11_weeks/10_week/03_RS_Riddles_Overmint3/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "10-11_weeks/11_week/04_DVD_2_NaiveReceiver/lib/solady"]
+	path = 10-11_weeks/11_week/04_DVD_2_NaiveReceiver/lib/solady
+	url = https://github.com/vectorized/solady
