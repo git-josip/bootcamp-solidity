@@ -20,7 +20,7 @@ contract GovernanceViceroyAssigner {
             bytecode,
             abi.encode(_governance, attackTreasury, address(governance.communityWallet()))
         );
-        // get hash & address using a fixed salt here => uint(123)
+        // hash with fixed salt 
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
