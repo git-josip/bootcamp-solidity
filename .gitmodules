@@ -91,3 +91,6 @@
 [submodule "10-11_weeks/11_week/04_DVD_2_NaiveReceiver/lib/solady"]
 	path = 10-11_weeks/11_week/04_DVD_2_NaiveReceiver/lib/solady
 	url = https://github.com/vectorized/solady
+[submodule "12_week/huff-puzzles/lib/forge-std"]
+	path = 12_week/huff-puzzles/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
