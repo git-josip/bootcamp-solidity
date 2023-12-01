@@ -13,5 +13,8 @@
 
 
 #define macro MAIN() = takes(0) returns(0) {
-    
+    0x20 0x00 mstore                              // mstore the dynamic offset of 0x20 to 0x00
+    0x09 0x20 mstore                              // mstore the length of the dynamic array
+    __RIGHTPAD(0x4f6e6c792048756666) 0x40 mstore // mstore the value at the next slot and make it rightpad so we will read just first 9 bytes from that location
+    0x09 0x40 revert
 }
