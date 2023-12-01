@@ -9,5 +9,11 @@
 
 
  #define macro MAIN() = takes(0) returns(0) {
-    
+    calldatasize 0x00 0x00  // [ destOffset, offset, size ]
+    calldatacopy // copy all calldata to memory []
+
+    calldatasize 0x00 // [offset, size]
+    sha3              // [keccak256 of calldata]
+    0x00 mstore                         // store it on slot 0 []
+    0x20 0x00 return                    // return 32 bytes of slot 0 []
  }

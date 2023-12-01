@@ -19,8 +19,8 @@
     0x00                // [0]
     calldataload        // [first 32 bytes of calldata]
     0xe0                // [224, first 32 bytes of calldata]
-    shr
-    dup1                 // [first 4 bytes of calldata] as it shifts right  32 bytes of calldata for 224
+    shr                 // [first 4 bytes of calldata] as it shifts right  32 bytes of calldata for 224
+    dup1                // duplicate for second sig check
     
     __FUNC_SIG(foo)    // [keccak256 of our function selecter "foo()", first 4 bytes of calldata]
     eq foo jumpi       // will jump to the macro ADD_ONE if first 4 bytes of calldata equals the hash of "add1(uint256)"
