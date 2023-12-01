@@ -9,5 +9,12 @@
  */
 
 #define macro MAIN() = takes(0) returns(0) {
+    callvalue // load msg.value to stack
+    iszero    // check if msg.value is 0
+   
+    end jumpi          // if it is 0 then jump to end tag      
+    0x00 0x00 revert   // else it will revert
 
+    end:
+        0x00 0x00 return
 }
