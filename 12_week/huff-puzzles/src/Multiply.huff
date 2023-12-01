@@ -13,5 +13,36 @@
 
 
 #define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload   //load 32 bytes of calldata
+    0xe0 shr            //shift right for 28bytes
 
+    __FUNC_SIG(multiply) eq multiply jumpi //check is function matchin oru multiply function
+    0x00 0x00 revert
+
+    multiply:
+        MULTIPLY()
+}
+
+#define macro MULTIPLY() = takes(0) returns(0) {
+    0x04 calldataload       //skip function signature and load bytes [a]
+    0x24 calldataload       // load seconds 32 bytes from calldata [b, a]
+    dup2 dup2 dup2          // dup2 duplicate second arg: duplicates values for later checks 
+                            // stack now [a, b, a, b, a] 
+    
+    mul                     // calculates result [a*b, a, b, a]
+    swap3                   // swaps with last stack value which is a for iszero checl [a, a, b, result]
+    iszero                  // check A is zero: this is because of later dividing by zero when checking overflow 
+                            // [isZeroA, a, b, result]
+    swap2                   // [b, a, isZeroA, result]
+    swap1                   // [a, b, isZeroA, result]
+    dup4                    // [result, a, b, isZeroA, result] this is ordered for overflow check by division
+    div eq                  // check overflow: checks if result / a == b
+                            // [noOverflowCheck, isZeroA, result]   
+    or                      // checks if noOverflowCheck || isZeroA was true if so => no underflow [0/1, result]
+    end jumpi               // jumpi when overflow check passes ["end" jumptag, 0/1, result]
+    0x00 0x00 revert        // else it will revert
+
+    end:
+        0x00 mstore         // stores our value in memory
+        0x20 0x00 return    // returns our stored result 
 }
