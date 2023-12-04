@@ -12,5 +12,68 @@
 #define function withdraw(uint256) payable returns()
 
 #define macro MAIN() = takes(0) returns(0) {
+        0x00 calldataload 0xe0 shr                  // get function selector
+        dup1                                        // duplicate fn selector
+        __FUNC_SIG(balanceOf) eq balanceOf jumpi    // jump to balanceOf function if selector matches
+        __FUNC_SIG(withdraw) eq withdraw jumpi      // jump to withdraw function if selector matches
 
+        // receive/deposit default function
+        caller 0x00 mstore                      // safe caller address to mem to get the hash for storage
+        0x20 0x00 sha3 dup1                     // hash of address to get storage location * 2 [storageSlot, storageSlot]
+        sload                                   // [balanceOf user, storageSlot]
+        callvalue add swap1                     // add the amount sent [storageSlot, new balanceOf user]
+        sstore 0x00 0x00 return                 // store the new value and return []
+
+    deposit:
+        caller 0x00 mstore                      // safe caller address to mem to get the hash for storage
+        0x20 0x00 sha3 dup1                     // hash of address to get storage location * 2 [storageSlot, storageSlot]
+        sload                                   // [balanceOf user, storageSlot]
+        callvalue add swap1                     // add the amount sent [storageSlot, new balanceOf user]
+        sstore 0x00 0x00 return                 // store the new value and return []
+
+    balanceOf:
+        0x04 calldataload 0x00 mstore           // safe input address to memory to get the hash for storage []
+        0x20 0x00 sha3                          // hash of address to get storage location [storageSlot]
+        sload 0x00 mstore                       // loaded balance and stored in memory []
+        0x20 0x00 return                        // return balance []
+    
+    withdraw:
+        // hash caller
+        caller 0x00 mstore
+        0x20 0x00 sha3 dup1
+
+        // load all value 
+        sload               // [currentBalance, slotForBalance]
+        dup1                // [currentBalance, currentBalance, slotForBalance]
+        0x04 calldataload   // amount to withdraw param  [withdrawAmount, currentBalance, currentBalance, slotForBalance]
+        swap1               // reorder stack for substraction [currentBalance, withdrawAmount, currentBalance, slotForBalance]
+        sub                 // [substraction, currentBalance, slotForBalance]
+
+        // restructure stack to verify substraction
+        dup1   // [substraction, substraction, currentBalance, slotForBalance]
+        swap2  // [currentBalance, substraction, substraction, slotForBalance]
+        lt revertOnError jumpi  // if curretBalance is less than substraction revert
+
+        // store new value 
+        swap1    // [slotForBalance, substraction]
+        sstore
+
+        // send value to caller
+        0x00                //retSize
+        0x00                //retOffset
+        0x00                //argsSize
+        0x00                //argsOffset
+        0x04 calldataload   //vamount to withdraw
+        caller              //address
+        gas                 //gas
+        call
+        
+        // Check is result success
+        iszero
+        revertOnError jumpi
+        
+        0x00 0x00 return
+
+    revertOnError:
+        0x00 0x00 revert
 }
