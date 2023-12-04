@@ -9,9 +9,57 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
+
+ /**
+  contract code to return 0x0caffe
+    // RUNTIME_CODE
+        // PUSH3 0x0caffe                                 // opcode=> 62 0caffe
+        // PUSH1 0x00                                     // opcode=> 60 00
+        // MSTORE                                         // opcode=> 52
+        // PUSH1 0x20                                     // opcode=> 60 20
+        // PUSH1 0x00                                     // opcode=> 60 00
+        // RETURN                                         // opcode=> f3
+        // => runtime code concatenated = 620caffe60005260206000f3
+
+    // INIT_CODE
+        // PUSH1 0x0c                                     // length of the runtime code. 12b                        opcode: 60 0c
+        // DUP1                                           // duplicate length.                                      opcode: 80      
+        // PUSH1 0x0b                                     // where the runtime code begins. length init code 11b    opcode: 60 0b
+        // PUSH1 0x00                                     // copy the runtime code from calldata into memory        opcode: 60 00
+        // CODECOPY                                       // copied code to memory                                  opcode: 39
+        // PUSH1 0x00                                     //                                                        opcode: 60 00
+        // RETURN                                         // reurn                                                  opcode: f3
+        // => init code = 600c80600b6000396000f3
+
+    // CONTRACT CODE: INIT_CODE + RUNTIME_CODE => 600c80600b6000396000f3620caffe60005260206000f3
+ */
+
+
  #define function makeContract() payable returns(address)
 
 
  #define macro MAIN() = takes(0) returns(0) {
-    
+    // get 4 first bytes
+    0x00 calldataload
+    0xe0 shr
+
+    // makeContract()
+    __FUNC_SIG(makeContract) eq makeContractLabel jumpi // if matches our fucntion jump to it
+    0x00 0x00 revert                                    // else revert
+
+
+    makeContractLabel:
+        __RIGHTPAD(0x600c80600b6000396000f3620caffe60005260206000f3)
+        0x00 mstore
+
+        // deploy contract CREATE2
+        0x11            // salt
+        0x17            // size
+        0x00            // offset
+        0x00            // value
+        create2         // address returned to stack
+
+        
+        0x00 mstore         // store address in memory
+        0x20 0x00 return    // return
  }

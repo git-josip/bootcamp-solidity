@@ -13,5 +13,19 @@
 
 
  #define macro MAIN() = takes(0) returns(0) {
-    
+    0x00 calldataload   //load 32 bytes of calldata
+    0xe0 shr            //shift right for 28bytes
+
+    __FUNC_SIG(value) eq value jumpi //check is function matchin our value function
+    0x00 0x00 revert
+
+    value:
+        VALUE()
+ }
+
+#define macro VALUE() = takes(0) returns(0) {
+    0x04 calldataload
+    __EVENT_HASH(Value)
+    0x00 0x00
+    log2
  }
