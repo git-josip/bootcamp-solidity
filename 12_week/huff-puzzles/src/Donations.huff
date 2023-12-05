@@ -8,5 +8,25 @@
 #define function donated(address) payable returns(uint256)
 
 #define macro MAIN() = takes(0) returns(0) {
+     0x00 calldataload 0xe0 shr                  // get function selector
+    __FUNC_SIG(donated) eq donated jumpi    // jump to balanceOf function if selector matches
+    callvalue iszero break jumpi
+
+    // receive default function
+    caller 0x00 mstore                      // save caller address to mem to get the hash for storage
+    0x20 0x00 sha3 dup1                     // hash of address to get storage location * 2 [storageSlot, storageSlot]
+    sload                                   // [balanceOf user, storageSlot]
+    callvalue add                           // add the amount sent [storageSlot, new balanceOf user]
+    swap1                     
+    sstore                                  // store the new value and
     
+    0x00 0x00 return                        // return []
+
+    donated:
+        0x04 calldataload 0x00 mstore           // safe input address to memory to get the hash for storage []
+        0x20 0x00 sha3                          // hash of address to get storage location [storageSlot]
+        sload 0x00 mstore                       // loaded balance and sore it in memory for return
+        0x20 0x00 return                        // return balance
+    break:
+        0x00 0x00 return
 }
