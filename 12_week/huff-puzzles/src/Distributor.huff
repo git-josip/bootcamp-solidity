@@ -14,5 +14,57 @@
 
 
  #define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload 0xe0 shr                   // get func selector [selector]
+    __FUNC_SIG(distribute) eq distribute jumpi   // jump if selector matches
+    0x00 0x00 revert                             // else revert
+
+    distribute:
+        address balance                         // [our contract balance]
+        0x24 calldataload                       // [address arr length, balance]. FIrst 4 bytes are fn selector and next 32bytes are offset value, for dynamic array.
+        dup1 
+        
+        iszero                                  // [isArrayEmpty, arr.lenght, balance] 
+        revertOnInvalidState jumpi              // revert if array is empty
+
+        dup1 0x20 mstore                        // store length at 0x20 [length, balance]
+        swap1 div                               // [balance / arr.length]
+        dup1                                    // [amount, amount]
+        iszero break jumpi                      // isAmount is 0, do not iterate. Just end.
+
+        0x40 mstore                             // amount to send per person 
+        0x44 0x60 mstore                        // on 0x60 store pointer to first array elemnt in calldata.
+                                                // calldata encoding: 
+                                                //  0x2b2f487f   -> fun signature
+                                                //  0000000000000000000000000000000000000000000000000000000000000020 -> offset. means that first element after is jsut arr.length. 
+                                                //                                                                      addresses starts on 0x04 + 0x20 + 0x20 = 0x44
+                                                //  0000000000000000000000000000000000000000000000000000000000000004 -> arr length
+                                                //  0000000000000000000000000000000000000000000000000000000000000001 -> addresses start. 0 element
+        addressLoop jump
+    
+
+    addressLoop:
+        0x00 dup1 dup1 dup1                     // [0, 0, 0, 0] preparing for call opcode
+        0x40 mload                              // [amountToSend, 0, 0, 0, 0]
+        0x60 mload calldataload                 // [address, amountToSend, 0, 0, 0, 0]
+        gas call                                // add gas to array and transer amount to address
+        //iszero revertOnInvalidState jumpi     // revert if call is not successful. This does not work when array size is 1. I do not understand. 
+                                                // underflow happens. Calldata is for some reason different when is 1 el in array. 
+        pop 0x01
+
+        0x20 mload sub                          // load length [length - 1]
+        dup1 
+        iszero break jumpi                      // checks for zero and returns when done
+        0x20 mstore                             // store new length for later [new length] 
+        
+        
+        0x60 mload 0x20 add                     // updates pointer [new pointer]
+        0x60 mstore                             // saves new pointer for next address []
+        addressLoop jump                        // repeat as long as length > 1
+
+    break:
+        0x00 0x00 return                        // just returns
+
+    revertOnInvalidState:                       // [arr.lenght, balance]
+        0x00 0x00 revert  
    
  }
