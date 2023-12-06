@@ -40,7 +40,7 @@
         add
         0x00 mstore                     // save incremented sum
 
-        //0x01
+        0x01
         0x20 mload 
         sub        
         dup1                            // load length [length - 1] 
