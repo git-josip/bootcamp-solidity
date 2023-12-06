@@ -8,11 +8,11 @@
 
 #define macro MAIN() = takes(0) returns(0) {
     0x01            // [1]
-    0x00            // [0, 1]
+    returndatasize            // [0, 1]
     mstore          // []
 
     // return 1
     0x20            // [32]
-    0x00            // [0, 32]
+    returndatasize  // [0, 32], using returndatasize becasue oxoo push1, is translated to push0 which has errors
     return          // []
 }
