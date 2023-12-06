@@ -1,4 +1,3 @@
-
 /** 
  *  SUM_ARRAY HUFF EXERCISE
  *
@@ -10,7 +9,50 @@
 
 #define function sumArray(uint256[]) payable returns(uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
+    0x00 calldataload 0xe0 shr                   // get func selector [selector]
+    __FUNC_SIG(sumArray) eq sumArray jumpi          // jump if selector matches
+    0x00 0x00 revert                             // else revert
 
-}
+    sumArray:
+        0x24 calldataload                       // [arr length]. FIrst 4 bytes are fn selector and next 32bytes are offset value, for dynamic array.
+        //dup1
+        iszero                                  // [isArrayEmpty, arr.lenght] 
+        break jumpi                        		// returnZero if array is empty
+
+        0x24 calldataload
+        0x20 mstore                             // store length at 0x20 [length, balance]
+
+        0x44 
+        0x40 mstore                        		// on 0x40 store pointer to first array elemnt in calldata.
+                                                // calldata encoding: 
+                                                //  0x2b2f487f   -> fun signature
+                                                //  0000000000000000000000000000000000000000000000000000000000000020 -> offset. means that first element after is jsut arr.length. 
+                                                //                                                                      number arr starts on 0x04 + 0x20 + 0x20 = 0x44
+                                                //  0000000000000000000000000000000000000000000000000000000000000004 -> arr length
+                                                //  0000000000000000000000000000000000000000000000000000000000000001 -> addresses start. 0 element
+        numberLoop jump
+    
+
+    numberLoop:
+        0x40 mload calldataload         // [load next number]
+        0x00 mload                      // [totalSum]
+        add
+        0x00 mstore                     // save incremented sum
+
+        //0x01
+        0x20 mload 
+        sub        
+        dup1                            // load length [length - 1] 
+        iszero break jumpi              // checks for zero and returns when done
+        0x20 mstore                     // store new length for later [new length] 
+        
+        0x40 mload 
+        0x20 
+        add                             // updates pointer [new pointer]
+        0x40 mstore                     // saves new pointer for next address []
+        numberLoop jump                 // repeat as long as length > 1
+
+    break:
+        0x20 0x00 return 
+ }
