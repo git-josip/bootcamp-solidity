@@ -44,10 +44,7 @@ pushh:
     0x01 add                                // [newLength, oldLength, arrayStorageSlot]
     
     returndatasize                          // [pointerToArrayLength, newLength, oldLength, arrayStorageSlot]
-    //swap1                                   // [newLength, pointerToArrayLength, oldLength, arrayStorageSlot]
     sstore                                  // update new length of arr [oldLength = indexOfNewItem, arrayStorageSlot]
-
-    //0x01 add                              // [oldLength, arrayStorageSlot]
 
     add                                     // indexOfNewItem(oldLength) + arrayStorageSlot = new element storage slot
     0x04 calldataload 
