@@ -26,6 +26,16 @@ contract SimulateArrayTest is Test, NonMatchingSelectorHelper {
     }
 
     function testSimulateArray(uint256[] memory array) external {
+
+        // uint256[] memory array = new uint256[](6);
+        // // 4, 5, 12, 1, 3, 6
+        // array[0] = 4;
+        // array[1] = 3;
+        // array[2] = 7;
+        // array[3] = 8;
+        // array[4] = 10;
+        // array[5] = 2;
+
         vm.expectRevert(bytes4(keccak256("ZeroArray()")));
         simulateArray.popp();
 

@@ -15,15 +15,124 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function pushh(uint256 num) payable returns()
- #define function popp() payable returns()
- #define function read(uint256 index) payable returns(uint256)
- #define function length() payable returns(uint256)
- #define function write(uint256 index, uint256 num) payable returns()
+#define function pushh(uint256 num) payable returns()
+#define function popp() payable returns()
+#define function read(uint256 index) payable returns(uint256)
+#define function length() payable returns(uint256)
+#define function write(uint256 index, uint256 num) payable returns()
 
- #define error OutOfBounds()
- #define error ZeroArray()
+#define error OutOfBounds()
+#define error ZeroArray()
 
- #define macro MAIN() = takes(0) returns(0) {
+#define macro MAIN() = takes(0) returns(0) {
+0x20 returndatasize sha3                // [arrayStorageSlot]
+returndatasize calldataload 0xe0 shr    // [selector, keccak256(0)]
+dup1 dup1 dup1 dup1                     // [selector, selector, selector, selector, selector, keccak256(0)] // preparing stack for calls 
+
+__FUNC_SIG(pushh) eq pushh jumpi        
+__FUNC_SIG(popp) eq popp jumpi          
+__FUNC_SIG(read) eq read jumpi          
+__FUNC_SIG(length) eq length jumpi      
+__FUNC_SIG(write) eq write jumpi        
+returndatasize returndatasize revert    // revert if does not match
+
+pushh:                               
+    pop pop pop pop                         // [arrayStorageSlot]
+    returndatasize                          // [pointerToArrayLength, arrayStorageSlot]
+    sload 
+    dup1                                    // [oldLength, oldLength, arrayStorageSlot]
+    0x01 add                                // [newLength, oldLength, arrayStorageSlot]
     
- }
+    returndatasize                          // [pointerToArrayLength, newLength, oldLength, arrayStorageSlot]
+    //swap1                                   // [newLength, pointerToArrayLength, oldLength, arrayStorageSlot]
+    sstore                                  // update new length of arr [oldLength = indexOfNewItem, arrayStorageSlot]
+
+    //0x01 add                              // [oldLength, arrayStorageSlot]
+
+    add                                     // indexOfNewItem(oldLength) + arrayStorageSlot = new element storage slot
+    0x04 calldataload 
+    swap1                                   // [newElementStorageSlot, numberToAdd]
+    sstore                                  // stores new value at end of arr []
+    returndatasize returndatasize return    // return when done
+
+popp:                                    
+    pop pop pop                      // [arrayStorageSlot]
+    returndatasize                   // [pointerToArrayLength, ptr to arr]
+    sload 
+    dup1                             // [oldLength, oldLength, arrayStorageSlot] 
+    returndatasize                   // [0, oldLength, oldLength, arrayStorageSlot]
+    eq revertZeroArray jumpi         // reverts, as can not pop empty array
+                                     // [oldLength, arrayStorageSlot]
+    0x01                             // [0x01, oldLength, arrayStorageSlot]
+    swap1                            // [oldLength, 0x01, oldLength, arrayStorageSlot]
+    sub                              // [newLength, OutOfBounds]
+    dup1                             // [newLength, newLength, arrayStorageSlot]
+    returndatasize                   // [pointerToArrayLength, newLength, newLength, arrayStorageSlot]
+    swap1                            // [newLength, pointerToArrayLength, newLength, arrayStorageSlot]
+    sstore                           // store newLength [newLength, arrayStorageSlot]
+
+    add                                     // calculate element storage slot to POP
+    returndatasize                          // [0, storageSlotOfElToRemove]
+    sstore                                  // clears the storage slot and gives gas refund for setting storage to 0
+    returndatasize returndatasize return    // return when done            
+
+read:                                   
+    pop pop                         // [arrayStorageSlot]
+    returndatasize                  // [pointerToArrayLength, arrayStorageSlot]
+    sload 
+    dup1                            // [length, length, arrayStorageSlot] 
+
+    0x04 calldataload 0x01 add      // get user input index from calldata [index + 1, length, length, arrayStorageSlot]
+    gt                              // checks if index > length [indexBigger, length, arrayStorageSlot]
+    swap1                           // [length, indexBigger, arrayStorageSlot]
+    iszero                          // checks if length is 0 [lengthIsZero, indexBigger, arrayStorageSlot]                   
+    or                              // ors both checks together [arrayStorageSlot]
+    revertOutOfBounds jumpi         // reverts if index > length 
+
+                                    // [arrayStorageSlot]
+    0x04 calldataload               // [indexToRead, arrayStorageSlot]
+    add                             // [storageSlotToRead]
+    sload                           // loads value from the slot we calculated
+
+    returndatasize                  // [0x00, storageSlotToRead]
+    mstore                          // store value at 0x00 memory location
+    
+    0x20 returndatasize return      // return value when done
+
+length:                                  
+    pop pop                         // []
+    returndatasize
+    sload                           // length of array
+    
+    returndatasize mstore           // store lenght to memory location 0x00
+    0x20 returndatasize return      // return length
+
+write:                              
+    returndatasize                  // [pointerToArrayLength, arrayStorageSlot]
+    sload 
+    dup1                            // [length, length, arrayStorageSlot] 
+
+    0x04 calldataload 0x01 add      // get user input index from calldata [index + 1, length, length, arrayStorageSlot]
+    gt                              // checks if index > length [indexBigger, length, arrayStorageSlot]
+    swap1                           // [length, indexBigger, arrayStorageSlot]
+    iszero                          // checks if length is 0 [lengthIsZero, indexBigger, arrayStorageSlot]                   
+    or                              // or - checks together [arrayStorageSlot]
+    revertOutOfBounds jumpi         // reverts if index > length
+    
+    0x04 calldataload                       // [indexToWrite, arrayStorageSlot]
+    add                                     // [elementStorageSlot]
+    0x24 calldataload                       // [number, elementStorageSlot]
+    swap1                                   // [elementStorageSlot, number]
+    sstore                                  // stored new number at given index
+    returndatasize returndatasize return    // return when done
+
+revertOutOfBounds:                   
+    pop              
+    __ERROR(OutOfBounds) 0x00 mstore
+    0x04 returndatasize revert
+
+revertZeroArray:                    
+    pop pop                         
+    __ERROR(ZeroArray) 0x00 mstore
+    0x04 returndatasize revert
+}
