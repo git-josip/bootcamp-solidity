@@ -7,7 +7,6 @@ import "forge-std/Vm.sol";
 import "./lib/YulDeployer.sol";
 
 interface IERC1155 {
-    // ERC-1155 standard functions
     event TransferSingle(
         address indexed operator,
         address indexed from,
@@ -20,7 +19,6 @@ interface IERC1155 {
         address indexed operator,
         bool approved
     );
-    event URI(string value, uint256 indexed id);
     event TransferBatch(
         address indexed operator,
         address indexed from,
@@ -28,60 +26,20 @@ interface IERC1155 {
         uint256[] ids,
         uint256[] values
     );
+    event URI(string value, uint256 indexed id);
 
-    // METADATA LOGIC
     function uri(uint256 id) external view returns (string memory);
-
     function setURI(string memory uri) external;
-
-    // must be marked back to view function
-    function balanceOf(
-        address account,
-        uint256 id
-    ) external view returns (uint256);
-
-    function balanceOfBatch(
-        address[] calldata accounts,
-        uint256[] calldata ids
-    ) external view returns (uint256[] memory);
-
+    function balanceOf(address account, uint256 id) external view returns (uint256);
+    function balanceOfBatch(address[] calldata accounts, uint256[] calldata ids) external view returns (uint256[] memory);
     function setApprovalForAll(address operator, bool approved) external;
+    function isApprovedForAll(address account, address operator) external view returns (bool);
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data) external;
+    function safeBatchTransferFrom(address from, address to, uint256[] calldata ids, uint256[] calldata amounts, bytes calldata data) external;
 
-    function isApprovedForAll(
-        address account,
-        address operator
-    ) external view returns (bool);
-
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    ) external;
-
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        bytes calldata data
-    ) external;
-
-    // custom functions
-    function mint(
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata
-    ) external;
-
-    function batchMint(
-        address to,
-        uint256[] calldata id,
-        uint256[] calldata amounts,
-        bytes calldata
-    ) external;
+    // mint functionality
+    function mint(address to, uint256 id, uint256 amount, bytes calldata) external;
+    function batchMint(address to, uint256[] calldata id, uint256[] calldata amounts, bytes calldata) external;
 }
 
 contract ERC1155YulTest is Test {
