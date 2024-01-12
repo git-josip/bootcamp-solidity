@@ -17,16 +17,7 @@ object "ERC1155Yul" {
      * @notice Deployed contracts runtime code
      */
         code {
-
-            /* ---------------------------------------------------------- */
-            /* --------------------- SETUP STORAGE ---------------------- */
-            /* ---------------------------------------------------------- */
-            // functions that return the storage slots for readability later on
-            function balanceOfMappingSlot() -> p { p := 0 }  // balances of               || address => address => uint256
-            function isApprovedForAllMappingSlot() -> p { p := 1 } // approved operators  || address => address => bool
-            function uriLengthSlot() -> p { p := 2 } // it stores length of string passed into constructor, next slots => value
-
-            // STORAGE LAYOUT WILL LOOK LIKE THIS
+            // MEMORY LAYOUT WILL LOOK LIKE THIS
             // 0x00 - 0x20 => Scratch Space
             // 0x20 - 0x40 => Scratch Space
             // 0x40 - 0x60 => Scratch Space
@@ -59,25 +50,24 @@ object "ERC1155Yul" {
             // -------------------------------------------------------- //
             case 0xb48ab8b6 {
                 let to := decodeAsAddress(0)
-                let tokenIdsPointer := decodeAsUint(1)      // gets the pointer to the length
-                let amountsPointer := decodeAsUint(2)       // gets the pointer to the length
-                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsPointer) 
-                let amountsLength := calldataloadSkipFnSelector(amountsPointer)
+                let tokenIdsCalldataOffset := decodeAsUint(1)
+                let amountsCalldataOffset := decodeAsUint(2)
 
+                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsCalldataOffset) 
+                let amountsLength := calldataloadSkipFnSelector(amountsCalldataOffset)
 
                 assertNonZeroAddress(to)
-
                 assertArraysLengthsAreSame(tokenIdsLength, amountsLength)
                 
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
-                    // tokenId will be pointer + (i + 1) and multiply by 32 bytes
+                    // load values
                     // by 32 bytes so first time => pointer + ((0 + 1) * 32 bytes) and so on
-                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsPointer, mul(add(i, 1), 0x20)))
-                    let amount := calldataloadSkipFnSelector(add(amountsPointer, mul(add(i, 1), 0x20)))
+                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
+                    let amount := calldataloadSkipFnSelector(add(amountsCalldataOffset, mul(add(i, 1), 0x20)))
                     mint(to, tokenId, amount)
                 }
                 // pass in: operator, from, to, tokenIds, amounts. last two will be handled inside emit function
-                emitTransferBatch(caller(), 0, to, tokenIdsPointer, amountsPointer)
+                emitTransferBatch(caller(), 0, to, tokenIdsCalldataOffset, amountsCalldataOffset)
             }
 
             // -------------------------------------------------------- //
@@ -92,10 +82,10 @@ object "ERC1155Yul" {
             // -------------------------------------------------------- //
             case 0x4e1273f4 {
                 // get pointers where length of arrays are stored
-                let ownersPointer := decodeAsUint(0)
-                let tokenIdsPointer := decodeAsUint(1)
-                let ownersLength := calldataloadSkipFnSelector(ownersPointer) 
-                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsPointer)
+                let ownersCalldataOffset := decodeAsUint(0)
+                let tokenIdsCalldataOffset := decodeAsUint(1)
+                let ownersLength := calldataloadSkipFnSelector(ownersCalldataOffset) 
+                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsCalldataOffset)
                 
                 assertArraysLengthsAreSame(ownersLength, tokenIdsLength)
 
@@ -113,8 +103,8 @@ object "ERC1155Yul" {
                 
                 // loop and get the balances from the given slots & ids and store them
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
-                    let owner := calldataloadSkipFnSelector(add(ownersPointer, mul(add(i, 1), 0x20)))
-                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsPointer, mul(add(i, 1), 0x20)))
+                    let owner := calldataloadSkipFnSelector(add(ownersCalldataOffset, mul(add(i, 1), 0x20)))
+                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
                     let amount := balanceOfAddress(owner, tokenId)
 
                     mstore(getMemoryPointer(), amount)
@@ -129,7 +119,7 @@ object "ERC1155Yul" {
             case 0xa22cb465 {
                 let operator := decodeAsAddress(0)
                 let isApproved := decodeAsUint(1)
-                let slot := nestedMappingSlot(isApprovedForAllMappingSlot(), caller(), operator)
+                let slot := nestedStorageSlot(isApprovedForAllBaseSlot(), caller(), operator)
                 sstore(slot, isApproved)
                 emitApprovalForAll(caller(), operator, isApproved)
                 return(0, 0)
@@ -154,7 +144,7 @@ object "ERC1155Yul" {
                 let amount := decodeAsUint(3)
 
 
-                let fromSlot := nestedMappingSlot(balanceOfMappingSlot(), from, tokenId)
+                let fromSlot := nestedStorageSlot(balanceOfBaseSlot(), from, tokenId)
                 let fromBalance := sload(fromSlot)
 
                 // check for sufficient balance, correct to address & approval / ownership 
@@ -165,7 +155,7 @@ object "ERC1155Yul" {
                 // already checked for underflow => use sub instead of safeSub
                 sstore(fromSlot, sub(fromBalance, amount))
 
-                let toSlot := nestedMappingSlot(balanceOfMappingSlot(), to, tokenId)
+                let toSlot := nestedStorageSlot(balanceOfBaseSlot(), to, tokenId)
                 // sload the old balance and safeAdd "amount" then store the result as the new balance
                 sstore(toSlot, safeAdd(sload(toSlot), amount))
                 emitTransferSingle(caller(), from, to, tokenId, amount)
@@ -179,10 +169,10 @@ object "ERC1155Yul" {
                 let to := decodeAsAddress(1)
 
                 // get pointers where length of arrays are stored
-                let tokenIdsPointer := decodeAsUint(2)
-                let amountsPointer := decodeAsUint(3)
-                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsPointer) 
-                let amountsLength := calldataloadSkipFnSelector(amountsPointer)
+                let tokenIdsCalldataOffset := decodeAsUint(2)
+                let amountsCalldataOffset := decodeAsUint(3)
+                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsCalldataOffset) 
+                let amountsLength := calldataloadSkipFnSelector(amountsCalldataOffset)
 
                 // check for same length arrays, correct receiver & approval / ownership 
                 assertIfSenderHasApproval(from)
@@ -192,11 +182,11 @@ object "ERC1155Yul" {
                 // loop and get the balances from the given slots & ids and store them
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
                     // get tokenId and amount from calldata
-                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsPointer, mul(add(i, 1), 0x20)))
-                    let amount := calldataloadSkipFnSelector(add(amountsPointer, mul(add(i, 1), 0x20)))
+                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
+                    let amount := calldataloadSkipFnSelector(add(amountsCalldataOffset, mul(add(i, 1), 0x20)))
                     // get mapping slots to store the new balances
-                    let fromSlot := nestedMappingSlot(balanceOfMappingSlot(), from, tokenId)
-                    let toSlot := nestedMappingSlot(balanceOfMappingSlot(), to, tokenId)
+                    let fromSlot := nestedStorageSlot(balanceOfBaseSlot(), from, tokenId)
+                    let toSlot := nestedStorageSlot(balanceOfBaseSlot(), to, tokenId)
                     let fromBalance := balanceOfAddress(from, tokenId)
 
                     // revert with NOT_ENOUGH_BALANCE => infos for user + underflow protection
@@ -207,7 +197,7 @@ object "ERC1155Yul" {
                     sstore(toSlot, safeAdd(sload(toSlot), amount))
                 }
                 // pass in: operator, from, to, tokenIds, amounts. last two will be handled inside emit function
-                emitTransferBatch(caller(), from, to, tokenIdsPointer, amountsPointer)
+                emitTransferBatch(caller(), from, to, tokenIdsCalldataOffset, amountsCalldataOffset)
             }
             
             // ---------------------------------------------------------------- //
@@ -248,8 +238,8 @@ object "ERC1155Yul" {
             // ---------------------------------------------------------------- //
             case 0x02fe5305 {
                 // get pointer & length of string
-                let stringPointer := decodeAsUint(0)
-                let stringLength := calldataloadSkipFnSelector(stringPointer)
+                let stringCalldataOffset := decodeAsUint(0)
+                let stringLength := calldataloadSkipFnSelector(stringCalldataOffset)
 
                 mstore(0, uriLengthSlot())  // store storage slot of uri in memory to get hash
                 let stringStorageSlot := keccak256(0, 0x20) // get hash of storage slot
@@ -263,8 +253,8 @@ object "ERC1155Yul" {
                 }
                 // loop over slots amount and store all parts of the string in memory
                 for { let i := 0 } lt(i, slotsAmount) { i := add(i, 1) } {
-                    // get calldata at ((i + 1) * 32 bytes) + stringPointer for each storage slot
-                    let partialString := calldataloadSkipFnSelector(add(mul(0x20, add(i, 1)), stringPointer))
+                    // get calldata at ((i + 1) * 32 bytes) + stringCalldataOffset for each storage slot
+                    let partialString := calldataloadSkipFnSelector(add(mul(0x20, add(i, 1)), stringCalldataOffset))
                     // and store at hash of uriLengthSlot => increment for each partial string
                     sstore(add(stringStorageSlot, i), partialString)
                 }
@@ -283,18 +273,18 @@ object "ERC1155Yul" {
             /* ---------------- HELPER FUNCTIONS ------------------------- */
             /* ---------------------------------------------------------- */
             function mint(to, tokenId, amount) {
-                let slot := nestedMappingSlot(balanceOfMappingSlot(), to, tokenId)
+                let slot := nestedStorageSlot(balanceOfBaseSlot(), to, tokenId)
                 // add balance to same slot if already exist
                 sstore(slot, safeAdd(sload(slot), amount))
             }
 
             function balanceOfAddress(account, tokenId) -> balanceOf {
-                let slot := nestedMappingSlot(balanceOfMappingSlot(), account, tokenId)
+                let slot := nestedStorageSlot(balanceOfBaseSlot(), account, tokenId)
                 balanceOf := sload(slot)
             }
             
             function isApprovedForAll(account,operator) -> isApproved {
-                let slot := nestedMappingSlot(isApprovedForAllMappingSlot(), account, operator)
+                let slot := nestedStorageSlot(isApprovedForAllBaseSlot(), account, operator)
                 isApproved := sload(slot)
             }
 
@@ -331,21 +321,22 @@ object "ERC1155Yul" {
                 }
             }
 
-            /* ---------------------------------------------------------- */
-            /* ---------------- STORAGE HELPER FUNCTIONS ---------------- */
-            /* ---------------------------------------------------------- */
-            // calculates slot where values are stored in a nested mapping
-            function nestedMappingSlot(mappingSlot, param1, param2) -> slot {
-                mstore(0x00, mappingSlot)                       // put mapping slot on stack
-                mstore(0x20, param1)                            // put 1st input on stack
-                mstore(0x40, param2)                            // put 2nd input on stack
+            /* --------------------- STORAGE LAYOUT ---------------------- */
+            // functions that return the base storage slots for different purposes
+            function balanceOfBaseSlot() -> p { p := 0 } 
+            function isApprovedForAllBaseSlot() -> p { p := 1 }
+            function uriLengthSlot() -> p { p := 2 }
 
-                slot := keccak256(0x00, 0x60)                   // calculate keccak256 of three variables concatenated
+            /* ---------------- STORAGE HELPER FUNCTIONS ---------------- */
+            function nestedStorageSlot(baseSlot, param1, param2) -> slot {
+                mstore(0x00, baseSlot)                       
+                mstore(0x20, param1)                            
+                mstore(0x40, param2)                            
+
+                slot := keccak256(0x00, 0x60)
             }
 
-            /* ---------------------------------------------------------- */
             /* ---------------- MEMORY HELPER FUNCTIONS ----------------- */
-            /* ---------------------------------------------------------- */
             // just returns the memory pointer position which is 0x60
             function getMemoryPointerPosition() -> position {
                 position := 0x60
@@ -366,9 +357,7 @@ object "ERC1155Yul" {
                 mstore(getMemoryPointerPosition(), newSlot)
             }
 
-            /* ---------------------------------------------------------- */
             /* -------------- EMIT EVENTS HELPER FUNCTIONS -------------- */
-            /* ---------------------------------------------------------- */
             function emitTransferSingle(operator, from, to, tokenId, amount) {
                 // keccak256 of "TransferSingle(address,address,address,uint256,uint256)"
                 let signatureHash := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
@@ -378,12 +367,12 @@ object "ERC1155Yul" {
                 log4(0, 0x40, signatureHash, operator, from, to)
             }
 
-            function emitTransferBatch(operator, from, to, tokenIdsPointer, amountsPointer) {
+            function emitTransferBatch(operator, from, to, tokenIdsCalldataOffset, amountsCalldataOffset) {
                 // keccak256 of "TransferBatch(address,address,address,uint256[],uint256[])"
                 let signatureHash := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
                 
-                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsPointer) 
-                let amountsLength := calldataloadSkipFnSelector(amountsPointer)
+                let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsCalldataOffset) 
+                let amountsLength := calldataloadSkipFnSelector(amountsCalldataOffset)
 
                 // add lengths of arrays and multiply with 32 bytes, then add 64 bytes for ptrs + lengths
                 // => 128 bytes + ((length * 2) * 32 bytes)
@@ -401,8 +390,8 @@ object "ERC1155Yul" {
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
                     // tokenId / amount will be at pointer + (i + 1) then multiply by 32 bytes
                     // so first time => pointer + ((0 + 1) * 32 bytes) and so on
-                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsPointer, mul(add(i, 1), 0x20)))
-                    let amount := calldataloadSkipFnSelector(add(amountsPointer, mul(add(i, 1), 0x20)))
+                    let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
+                    let amount := calldataloadSkipFnSelector(add(amountsCalldataOffset, mul(add(i, 1), 0x20)))
                     
                     // stroe tokenId beginning at 0x60 to account for the 2ptrs + length 1st array
                     mstore(mul(add(i, 3), 0x20), tokenId)
@@ -418,7 +407,7 @@ object "ERC1155Yul" {
                 log3(0, 0x20, signatureHash, owner, operator)
             }
 
-            function emitURI(stringPointer, id) {
+            function emitURI(stringCalldataOffset, id) {
                 // keccak256 of "URI(string,uint256)"
                 let signatureHash := 0x6bb7ff708619ba0610cba295a58592e0451dee2622938c8755667688daf3529b
                 
@@ -430,23 +419,21 @@ object "ERC1155Yul" {
                 // log2(0x00, 0x20, signatureHash, id)
             }
 
-            /* ---------------------------------------------------------- */
             /* -------- HELPER FUNCTIONS FOR CALLDATA DECODING  --------- */
-            /* ---------------------------------------------------------- */
             // @dev grabs the function selector from the calldata
             function getSelector() -> selector {
                 selector := shr(224, calldataload(0x00))
             }
 
             // @dev adds 4 bytes when calldataloading to skip the func selector
-            function calldataloadSkipFnSelector(slotWithoutOffset) -> value {
-                value := calldataload(add(4, slotWithoutOffset))
+            function calldataloadSkipFnSelector(slotWithoutFnSelectorOffset) -> value {
+                value := calldataload(add(4, slotWithoutFnSelectorOffset))
             }
 
-            // @dev masks 12 bytes to decode an address from the calldata (address = 20 bytes)
+            // @dev address is 20 bytes, so we are checking only 20bytes are rpesent in address value, if not revert occurrs.
             function decodeAsAddress(offset) -> value {
                 value := decodeAsUint(offset)
-                if iszero(iszero(and(value, not(0xffffffffffffffffffffffffffffffffffffffff)))) {
+                if iszero(iszero(and(value, not(0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff)))) {
                     revert(0, 0)
                 }
             }
@@ -460,12 +447,7 @@ object "ERC1155Yul" {
                 value := calldataload(pos)
             }
 
-            /* ------------------------------------------------------- */
             /* ---------- HELPER FUNCTIONS FOR RETURN DATA ----------- */
-            /* ------------------------------------------------------- */
-            // @dev returns memory data (from offset, size of return value)
-            // @param from (starting address in memory) to return, e.g. 0x00
-            // @param to (size of the return value), e.g. 0x20 for 32 bytes 0x40 for 64 bytes
             function returnMemory(offset, size) {
                 return(offset, size)
             }
@@ -476,9 +458,7 @@ object "ERC1155Yul" {
                 return(0, 0x20)
             }
 
-            /* ------------------------------------------------------- */
-            /* -------------- UTILITY HELPER FUNCTIONS --------------- */
-            /* ------------------------------------------------------- */
+            /* -------------- MATH HELPER FUNCTIONS --------------- */
             function lte(a, b) -> r {
                 r := iszero(gt(a, b))
             }
@@ -491,7 +471,7 @@ object "ERC1155Yul" {
                 if iszero(condition) { revert(0, 0) }
             }
 
-            // Overflow & Underflow Protection / Safe Math 
+            // Overflow & Underflow Protection
             function safeAdd(a, b) -> r {
                 r := add(a, b)
                 if or(lt(r, a), lt(r, b)) { revert(0, 0) }
