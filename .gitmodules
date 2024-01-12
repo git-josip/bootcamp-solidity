@@ -100,3 +100,6 @@
 [submodule "12_week/ethernaut_19_alien_codex/lib/forge-std"]
 	path = 12_week/ethernaut_19_alien_codex/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "13-14_weeks/erc1155-yul-and-assembly/lib/forge-std"]
+	path = 13-14_weeks/erc1155-yul-and-assembly/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
