@@ -4,29 +4,34 @@
 
 object "ERC1155Yul" {   
     /**
-     * @notice Constructor
+     * @dev Constructor
      */
     code {
-        // Basic constructor
+        // base constructor
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
 
     object "runtime" {
     /**
-     * @notice Deployed contracts runtime code
+     * @dev runtime code
      */
         code {
             setCurrentFreeMemorySlot(0x80)
+            
             
             /* ------------------------------------------------------- */
             /* ----------------- FUNCTION SELECTORS ------------------ */
             /* ------------------------------------------------------- */
 
-            switch getSelector()
-            // -------------------------------------------------------- //
+
+            /* ------------------------------------------------------- */
+            /* ----------------- FUNCTION SELECTORS ------------------ */
+            /* ------------------------------------------------------- */
+
+            switch getFunctionSelector()
+
             // --------- mint(address,uint256,uint256,bytes) ---------- //
-            // -------------------------------------------------------- //
             case 0x731133e9 {
                 let to := decodeAsAddress(0)
                 assertNonZeroAddress(to)
@@ -35,13 +40,12 @@ object "ERC1155Yul" {
                 let amount := decodeAsUint(2)    
 
                 mint(to, tokenId, amount)
+                
                 // operator == caller() when minting, from == zero addr, rest is given as input
                 emitTransferSingle(caller(), 0, to, tokenId, amount)
             }
 
-            // -------------------------------------------------------- //
             // ----- batchMint(address,uint256[],uint256[],bytes) ----- //
-            // -------------------------------------------------------- //
             case 0xb48ab8b6 {
                 let to := decodeAsAddress(0)
                 let tokenIdsCalldataOffset := decodeAsUint(1)
@@ -63,16 +67,12 @@ object "ERC1155Yul" {
                 emitTransferBatch(caller(), 0, to, tokenIdsCalldataOffset, amountsCalldataOffset)
             }
 
-            // -------------------------------------------------------- //
             // ------------- balanceOf(address,uint256) --------------- //
-            // -------------------------------------------------------- //
             case 0x00fdd58e {
                 returnUint(balanceOfAddress(decodeAsAddress(0), decodeAsUint(1)))                      
             }
 
-            // -------------------------------------------------------- //
             // -- balanceOfBatch(address[], uint256[]) -- //
-            // -------------------------------------------------------- //
             case 0x4e1273f4 {
                 // get pointers where length of arrays are stored
                 let ownersCalldataOffset := decodeAsUint(0)
@@ -99,7 +99,7 @@ object "ERC1155Yul" {
                 mstore(currentFreeMemorySlot(), tokenIdsLength)
                 incrementCurrentFreeMemorySlot()
                 
-                // loop and get the balances from the given slots & ids and store them
+                // loop trough addresses and tokenIds and return balance for provided pair at same index
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
                     let owner := calldataloadSkipFnSelector(add(ownersCalldataOffset, mul(add(i, 1), 0x20)))
                     let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
@@ -111,9 +111,7 @@ object "ERC1155Yul" {
                 return(initialFreeMemorySlot, finalMemorySize)
             }
 
-            // -------------------------------------------------------- //
             // ------------ setApprovalForAll(address,bool) ----------- //
-            // -------------------------------------------------------- //
             case 0xa22cb465 {
                 let operator := decodeAsAddress(0)
                 let isApproved := decodeAsUint(1)
@@ -123,18 +121,14 @@ object "ERC1155Yul" {
                 return(0, 0)
             }
 
-            // -------------------------------------------------------- //
             // ---------- isApprovedForAll(address,address) ----------- //
-            // -------------------------------------------------------- //
             case 0xe985e9c5 {
                 let isApproved := isApprovedForAll(decodeAsAddress(0), decodeAsAddress(1))
                 mstore(0x00, isApproved)
                 return(0, 0x20)
             }
             
-            // -------------------------------------------------------- //
             // safeTransferFrom(address,address,uint256,uint256,bytes)  //
-            // -------------------------------------------------------- //
             case 0xf242432a  {
                 let from := decodeAsAddress(0)
                 let to := decodeAsAddress(1)
@@ -145,23 +139,20 @@ object "ERC1155Yul" {
                 let fromSlot := nestedStorageSlot(balanceOfBaseSlot(), from, tokenId)
                 let fromBalance := sload(fromSlot)
 
-                // check for sufficient balance, correct to address & approval / ownership 
+                // validate balance, check if to address is zero and valdiate is there correct approval for this action
                 assertValidBalance(fromBalance, amount)
                 assertIfSenderHasApproval(from)
                 assertNonZeroAddress(to)
 
-                // already checked for underflow => use sub instead of safeSub
                 sstore(fromSlot, sub(fromBalance, amount))
 
                 let toSlot := nestedStorageSlot(balanceOfBaseSlot(), to, tokenId)
-                // sload the old balance and safeAdd "amount" then store the result as the new balance
+                
                 sstore(toSlot, safeAdd(sload(toSlot), amount))
                 emitTransferSingle(caller(), from, to, tokenId, amount)
             }                
 
-            // ---------------------------------------------------------------- //
             // safeBatchTransferFrom(address,address,uint256[],uint256[],bytes) //
-            // ---------------------------------------------------------------- //
             case 0x2eb2c2d6  {
                 let from := decodeAsAddress(0)
                 let to := decodeAsAddress(1)
@@ -179,45 +170,45 @@ object "ERC1155Yul" {
                 
                 // loop and get the balances from the given slots & ids and store them
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
-                    // get tokenId and amount from calldata
+                    
+                    // tokenId and amount from calldata
                     let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
                     let amount := calldataloadSkipFnSelector(add(amountsCalldataOffset, mul(add(i, 1), 0x20)))
-                    // get mapping slots to store the new balances
+                    // storage slots to store balances
                     let fromSlot := nestedStorageSlot(balanceOfBaseSlot(), from, tokenId)
                     let toSlot := nestedStorageSlot(balanceOfBaseSlot(), to, tokenId)
                     let fromBalance := balanceOfAddress(from, tokenId)
 
-                    // revert with NOT_ENOUGH_BALANCE => infos for user + underflow protection
                     assertValidBalance(fromBalance, amount)
 
-                    // get oldBalance from slot and safeAdd the amount + overflow protection
+                    // update from and to balances
                     sstore(fromSlot, sub(sload(fromSlot), amount))
                     sstore(toSlot, safeAdd(sload(toSlot), amount))
                 }
-                // pass in: operator, from, to, tokenIds, amounts. last two will be handled inside emit function
+
                 emitTransferBatch(caller(), from, to, tokenIdsCalldataOffset, amountsCalldataOffset)
             }
             
-            // ---------------------------------------------------------------- //
             // ------------------------- uri(uint256) ------------------------- //
-            // ---------------------------------------------------------------- //
             case 0x0e89341C {
                 let stringLength := sload(uriLengthSlot())
                 let startOfMemory := currentFreeMemorySlot()
+
                 mstore(startOfMemory, 0x20)  // store pointer to where the string will start
                 mstore(add(startOfMemory, 0x20), stringLength) // store string length
+
                 setCurrentFreeMemorySlot(add(startOfMemory, 0x40)) // advance memory pointer to prepare for loop
                 mstore(0, uriLengthSlot())  // store storage slot of uri in memory to get hash
                 let startingSlot := keccak256(0, 0x20) // get hash of storage slot
 
-                let slotsAmount := div(stringLength, 0x20) // get amount of storage slots the uri takes up
-                // when % 32 is > 1 => add another slot to account for the rest from above or if < 32
+                let numberOfSLots := div(stringLength, 0x20) // number of storage slots the uri takes up
+                // when stringLength % 0x20 is not 0 then add one more slot
                 if mod(stringLength, 0x20) {
-                    slotsAmount := add(slotsAmount, 1)
+                    numberOfSLots := add(numberOfSLots, 1)
                 }
 
                 // loop over slots amount and store all parts of the string in memory
-                for { let i := 0 } lt(i, slotsAmount) { i := add(i, 1) } {
+                for { let i := 0 } lt(i, numberOfSLots) { i := add(i, 1) } {
                     let partialString := sload(safeAdd(startingSlot,i))
                     mstore(currentFreeMemorySlot(), partialString)
                     incrementCurrentFreeMemorySlot()
@@ -258,7 +249,7 @@ object "ERC1155Yul" {
                 }
             }
 
-            // If no function selector was found we revert (fallback not implemented)
+            // if invalid selector is provided then revert
             default {
                 revert(0, 0)
             }
@@ -331,6 +322,7 @@ object "ERC1155Yul" {
 
             /* --------------------- MEMORY LAYOUT ---------------------- */
             // 0x00 - 0x20 => scratch space for hashing methods
+            // 0x20 - 0x40 => scratch space for hashing methods
             // 0x20 - 0x40 => scratch space for hashing methods
             // 0x40 - 0x60 => free memory pointer
             // 0x60 - ...  => Free memory
@@ -413,17 +405,24 @@ object "ERC1155Yul" {
             }
 
             /* -------- HELPER FUNCTIONS FOR CALLDATA DECODING  --------- */
-            // @dev grabs the function selector from the calldata
-            function getSelector() -> selector {
+            
+            /**
+             * @dev extract the function selector from the calldata
+             */
+            function getFunctionSelector() -> selector {
                 selector := shr(224, calldataload(0x00))
             }
 
-            // @dev adds 4 bytes when calldataloading to skip the func selector
+            /**
+             * @dev adds 4 bytes when calldataloading to skip the func selector
+             */
             function calldataloadSkipFnSelector(slotWithoutFnSelectorOffset) -> value {
                 value := calldataload(add(4, slotWithoutFnSelectorOffset))
             }
 
-            // @dev address is 20 bytes, so we are checking only 20bytes are rpesent in address value, if not revert occurrs.
+            /**
+             * @dev check that only address 20 bytes are present
+             */
             function decodeAsAddress(offset) -> value {
                 value := decodeAsUint(offset)
                 if iszero(iszero(and(value, not(0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff)))) {
@@ -431,7 +430,9 @@ object "ERC1155Yul" {
                 }
             }
 
-            // @dev starts at 4th byte to skip function selector and decodes theuint of the calldata
+            /**
+             * @dev skips fn selector and returns 32 bytes result based on offset
+             */
             function decodeAsUint(offset) -> value {
                 let pos := add(4, mul(offset, 0x20))
                 if lt(calldatasize(), add(pos, 0x20)) {
@@ -445,7 +446,9 @@ object "ERC1155Yul" {
                 return(offset, size)
             }
 
-            // @dev stores the value in memory 0x00 and returns that part of memory
+            /**
+             * @dev stores the value in memory 0x00 and returns that part of memory
+             */
             function returnUint(v) {
                 mstore(0, v)
                 return(0, 0x20)
