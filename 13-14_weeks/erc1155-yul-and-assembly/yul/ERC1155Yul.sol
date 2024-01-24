@@ -191,17 +191,17 @@ object "ERC1155Yul" {
             
             // ------------------------- uri(uint256) ------------------------- //
             case 0x0e89341C {
-                let stringLength := sload(uriLengthSlot())
+                let stringLength := sload(uriSlot())
                 let startOfMemory := currentFreeMemorySlot()
 
                 mstore(startOfMemory, 0x20)  // store pointer to where the string will start
                 mstore(add(startOfMemory, 0x20), stringLength) // store string length
 
                 setCurrentFreeMemorySlot(add(startOfMemory, 0x40)) // advance memory pointer to prepare for loop
-                mstore(0, uriLengthSlot())  // store storage slot of uri in memory to get hash
+                mstore(0, uriSlot())  // store storage slot of uri in memory to get hash
                 let startingSlot := keccak256(0, 0x20) // get hash of storage slot
 
-                let numberOfSLots := div(stringLength, 0x20) // number of storage slots the uri takes up
+                let numberOfSLots := div(stringLength, 0x20) // number of storage slots the uri takes to be stored
                 // when stringLength % 0x20 is not 0 then add one more slot
                 if mod(stringLength, 0x20) {
                     numberOfSLots := add(numberOfSLots, 1)
@@ -214,7 +214,7 @@ object "ERC1155Yul" {
                     incrementCurrentFreeMemorySlot()
                 }
 
-                returnMemory(startOfMemory, currentFreeMemorySlot())
+                return(startOfMemory, currentFreeMemorySlot())
             }
             
             // ---------------------------------------------------------------- //
@@ -230,21 +230,23 @@ object "ERC1155Yul" {
                 let stringCalldataOffset := decodeAsUint(0)
                 let stringLength := calldataloadSkipFnSelector(stringCalldataOffset)
 
-                mstore(0, uriLengthSlot())  // store storage slot of uri in memory to get hash
-                let stringStorageSlot := keccak256(0, 0x20) // get hash of storage slot
-                
-                sstore(uriLengthSlot(), stringLength)  // store string length in uriLengthSlot
+                mstore(0, uriSlot())                        
+                let stringStorageSlot := keccak256(0, 0x20) // hash of uri storage slot
+                sstore(uriSlot(), stringLength)             // store uri length in uriSlot
 
-                let slotsAmount := div(stringLength, 0x20) // get amount of storage slots the uri takes up
-                // when % 32 is >= 1 -> add another slot to account for the rest, or if < 32
+                let numberOfSlots := div(stringLength, 0x20) // number of storage slots the uri takes to be stored
+                // when stringLength % 0x20 is not 0 then add one more slot
                 if mod(stringLength, 0x20) {
-                    slotsAmount := add(slotsAmount, 1)
+                    numberOfSlots := add(numberOfSlots, 1)
                 }
+
                 // loop over slots amount and store all parts of the string in memory
-                for { let i := 0 } lt(i, slotsAmount) { i := add(i, 1) } {
-                    // get calldata at ((i + 1) * 32 bytes) + stringCalldataOffset for each storage slot
+                for { let i := 0 } lt(i, numberOfSlots) { i := add(i, 1) } {
+                    
+                    // extract part of string based on length and offset
                     let partialString := calldataloadSkipFnSelector(add(mul(0x20, add(i, 1)), stringCalldataOffset))
-                    // and store at hash of uriLengthSlot => increment for each partial string
+                    
+                    // store part of uri on calculated storageSlot increased by i
                     sstore(add(stringStorageSlot, i), partialString)
                 }
             }
@@ -309,7 +311,7 @@ object "ERC1155Yul" {
             /* --------------------- STORAGE LAYOUT ---------------------- */
             function balanceOfBaseSlot() -> baseSlot { baseSlot := 0 } 
             function isApprovedForAllBaseSlot() -> baseSlot { baseSlot := 1 }
-            function uriLengthSlot() -> baseSlot { baseSlot := 2 }
+            function uriSlot() -> baseSlot { baseSlot := 2 }
 
             /* ---------------- STORAGE HELPER FUNCTIONS ---------------- */
             function nestedStorageSlot(baseSlot, param1, param2) -> slot {
@@ -323,9 +325,9 @@ object "ERC1155Yul" {
             /* --------------------- MEMORY LAYOUT ---------------------- */
             // 0x00 - 0x20 => scratch space for hashing methods
             // 0x20 - 0x40 => scratch space for hashing methods
-            // 0x20 - 0x40 => scratch space for hashing methods
-            // 0x40 - 0x60 => free memory pointer
-            // 0x60 - ...  => Free memory
+            // 0x20 - 0x60 => scratch space for hashing methods
+            // 0x60 - 0x80 => free memory pointer
+            // 0x80 - ...  => free memory
             function freeMemoryPointerPosition() -> position { position := 0x60 }
             /* ---------------- MEMORY HELPER FUNCTIONS ----------------- */
             
@@ -346,6 +348,7 @@ object "ERC1155Yul" {
             function emitTransferSingle(operator, from, to, tokenId, amount) {
                 // keccak256 of "TransferSingle(address,address,address,uint256,uint256)"
                 let signatureHash := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
+                
                 // use scratch space to store non indexed values from 0x00 - 0x40
                 mstore(0, tokenId)
                 mstore(0x20, amount)
@@ -359,22 +362,30 @@ object "ERC1155Yul" {
                 let tokenIdsLength := calldataloadSkipFnSelector(tokenIdsCalldataOffset) 
                 let amountsLength := calldataloadSkipFnSelector(amountsCalldataOffset)
 
-                // add lengths of arrays and multiply with 32 bytes, then add 64 bytes for ptrs + lengths
-                // => 128 bytes + ((length * 2) * 32 bytes)
+                // in order to store one array we need following
+                // 0x00 - 0x20 => offset
+                // 0x20 - 0x40 => array length
+                // 0x40 - .... => array values
+                // all combined togeter is final memory size for returning
+                /// 0x20 + 0x20 + 0x20 * length = 0x40 + 0x20 * length
+
+                // so for this usage we need two times this.
+
                 let finalMemorySize := add(0x80, mul(mul(tokenIdsLength, 2), 0x20))
 
-                // start at 0x40 (2pointers) + ((length + 1) * 32 bytes)
+                // arrays offset. first starts on 0x40 and second is 0x20 * (array length + 1)
                 let tokenIdsStart := 0x40
                 let amountsStart := add(0x40, mul(add(1, amountsLength), 0x20))
 
-                // store the lengths in their starting postions
-                mstore(0x00, tokenIdsStart)           // store 0x40 (pointer of 1st arr starts after the 2 ptrs)
-                mstore(0x20, amountsStart)            // store where amounts will start (2nd pointer)
+                mstore(0x00, tokenIdsStart)           // store offest tokenIds
+                mstore(0x20, amountsStart)            // store offset amounts
+
+                // store length of arrays
                 mstore(tokenIdsStart, tokenIdsLength) // store the length of tokenIds array
                 mstore(amountsStart, amountsLength)   // store length of amounts array
+
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
-                    // tokenId / amount will be at pointer + (i + 1) then multiply by 32 bytes
-                    // so first time => pointer + ((0 + 1) * 32 bytes) and so on
+                    // load (tokenId, amount) pair
                     let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
                     let amount := calldataloadSkipFnSelector(add(amountsCalldataOffset, mul(add(i, 1), 0x20)))
                     
@@ -442,10 +453,6 @@ object "ERC1155Yul" {
             }
 
             /* ---------- HELPER FUNCTIONS FOR RETURN DATA ----------- */
-            function returnMemory(offset, size) {
-                return(offset, size)
-            }
-
             /**
              * @dev stores the value in memory 0x00 and returns that part of memory
              */
