@@ -82,11 +82,16 @@ object "ERC1155Yul" {
                 
                 assertArraysLengthsAreSame(ownersLength, tokenIdsLength)
 
-                // add 32 bytes for length of array then multiply length with 32 bytes
-                // => 32 bytes + (length * 32 bytes)
+                // in order to return array we need following
+                // 0x00 - 0x20 => offset
+                // 0x20 - 0x40 => array length
+                // 0x40 - .... => array values
+                // all combined togeter is final memory size for returning
+                /// 0x20 + 0x20 + 0x20 * length = 0x40 + 0x20 * length
                 let finalMemorySize := add(0x40, mul(tokenIdsLength, 0x20))
 
-                // store pointer of array starting at 0x80 (memPointer)
+                // store array offset
+                let initialFreeMemorySlot := currentFreeMemorySlot()
                 mstore(currentFreeMemorySlot(), 0x20)
                 incrementCurrentFreeMemorySlot()
 
@@ -103,7 +108,7 @@ object "ERC1155Yul" {
                     mstore(currentFreeMemorySlot(), amount)
                     incrementCurrentFreeMemorySlot()
                 }
-                return(0x80, finalMemorySize)
+                return(initialFreeMemorySlot, finalMemorySize)
             }
 
             // -------------------------------------------------------- //
