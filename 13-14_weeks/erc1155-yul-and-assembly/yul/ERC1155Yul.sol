@@ -17,13 +17,7 @@ object "ERC1155Yul" {
      * @notice Deployed contracts runtime code
      */
         code {
-            // MEMORY LAYOUT WILL LOOK LIKE THIS
-            // 0x00 - 0x20 => Scratch Space
-            // 0x20 - 0x40 => Scratch Space
-            // 0x40 - 0x60 => Scratch Space
-            // 0x60 - 0x80 => Free memory pointer
-            // 0x80 - .... => Free memory
-            setMemoryPointer(0x80)
+            setCurrentFreeMemorySlot(0x80)
             
             /* ------------------------------------------------------- */
             /* ----------------- FUNCTION SELECTORS ------------------ */
@@ -60,8 +54,7 @@ object "ERC1155Yul" {
                 assertArraysLengthsAreSame(tokenIdsLength, amountsLength)
                 
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
-                    // load values
-                    // by 32 bytes so first time => pointer + ((0 + 1) * 32 bytes) and so on
+                    // load values by 32 bytes
                     let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
                     let amount := calldataloadSkipFnSelector(add(amountsCalldataOffset, mul(add(i, 1), 0x20)))
                     mint(to, tokenId, amount)
@@ -94,12 +87,12 @@ object "ERC1155Yul" {
                 let finalMemorySize := add(0x40, mul(tokenIdsLength, 0x20))
 
                 // store pointer of array starting at 0x80 (memPointer)
-                mstore(getMemoryPointer(), 0x20)
-                incrementMemoryPointer()
+                mstore(currentFreeMemorySlot(), 0x20)
+                incrementCurrentFreeMemorySlot()
 
                 // store length of array
-                mstore(getMemoryPointer(), tokenIdsLength)
-                incrementMemoryPointer()
+                mstore(currentFreeMemorySlot(), tokenIdsLength)
+                incrementCurrentFreeMemorySlot()
                 
                 // loop and get the balances from the given slots & ids and store them
                 for { let i := 0 } lt(i, tokenIdsLength) { i := add(i, 1) } {
@@ -107,8 +100,8 @@ object "ERC1155Yul" {
                     let tokenId := calldataloadSkipFnSelector(add(tokenIdsCalldataOffset, mul(add(i, 1), 0x20)))
                     let amount := balanceOfAddress(owner, tokenId)
 
-                    mstore(getMemoryPointer(), amount)
-                    incrementMemoryPointer()
+                    mstore(currentFreeMemorySlot(), amount)
+                    incrementCurrentFreeMemorySlot()
                 }
                 return(0x80, finalMemorySize)
             }
@@ -205,10 +198,10 @@ object "ERC1155Yul" {
             // ---------------------------------------------------------------- //
             case 0x0e89341C {
                 let stringLength := sload(uriLengthSlot())
-                let startOfMemory := getMemoryPointer()
+                let startOfMemory := currentFreeMemorySlot()
                 mstore(startOfMemory, 0x20)  // store pointer to where the string will start
                 mstore(add(startOfMemory, 0x20), stringLength) // store string length
-                setMemoryPointer(add(startOfMemory, 0x40)) // advance memory pointer to prepare for loop
+                setCurrentFreeMemorySlot(add(startOfMemory, 0x40)) // advance memory pointer to prepare for loop
                 mstore(0, uriLengthSlot())  // store storage slot of uri in memory to get hash
                 let startingSlot := keccak256(0, 0x20) // get hash of storage slot
 
@@ -221,11 +214,11 @@ object "ERC1155Yul" {
                 // loop over slots amount and store all parts of the string in memory
                 for { let i := 0 } lt(i, slotsAmount) { i := add(i, 1) } {
                     let partialString := sload(safeAdd(startingSlot,i))
-                    mstore(getMemoryPointer(), partialString)
-                    incrementMemoryPointer()
+                    mstore(currentFreeMemorySlot(), partialString)
+                    incrementCurrentFreeMemorySlot()
                 }
 
-                returnMemory(startOfMemory, getMemoryPointer())
+                returnMemory(startOfMemory, currentFreeMemorySlot())
             }
             
             // ---------------------------------------------------------------- //
@@ -267,11 +260,7 @@ object "ERC1155Yul" {
 
             /* ---------------- FUNCTIONS -------------------------------- */
 
-
-
-            /* ---------------------------------------------------------- */
             /* ---------------- HELPER FUNCTIONS ------------------------- */
-            /* ---------------------------------------------------------- */
             function mint(to, tokenId, amount) {
                 let slot := nestedStorageSlot(balanceOfBaseSlot(), to, tokenId)
                 // add balance to same slot if already exist
@@ -322,10 +311,9 @@ object "ERC1155Yul" {
             }
 
             /* --------------------- STORAGE LAYOUT ---------------------- */
-            // functions that return the base storage slots for different purposes
-            function balanceOfBaseSlot() -> p { p := 0 } 
-            function isApprovedForAllBaseSlot() -> p { p := 1 }
-            function uriLengthSlot() -> p { p := 2 }
+            function balanceOfBaseSlot() -> baseSlot { baseSlot := 0 } 
+            function isApprovedForAllBaseSlot() -> baseSlot { baseSlot := 1 }
+            function uriLengthSlot() -> baseSlot { baseSlot := 2 }
 
             /* ---------------- STORAGE HELPER FUNCTIONS ---------------- */
             function nestedStorageSlot(baseSlot, param1, param2) -> slot {
@@ -336,25 +324,25 @@ object "ERC1155Yul" {
                 slot := keccak256(0x00, 0x60)
             }
 
+            /* --------------------- MEMORY LAYOUT ---------------------- */
+            // 0x00 - 0x20 => scratch space for hashing methods
+            // 0x20 - 0x40 => scratch space for hashing methods
+            // 0x40 - 0x60 => free memory pointer
+            // 0x60 - ...  => Free memory
+            function freeMemoryPointerPosition() -> position { position := 0x60 }
             /* ---------------- MEMORY HELPER FUNCTIONS ----------------- */
-            // just returns the memory pointer position which is 0x60
-            function getMemoryPointerPosition() -> position {
-                position := 0x60
+            
+
+            function currentFreeMemorySlot() -> value {
+                value := mload(freeMemoryPointerPosition())
             }
 
-            // gets the value (initialized as 0x80) stored in the memory pointer position 
-            function getMemoryPointer() -> value {
-                value := mload(getMemoryPointerPosition())
+            function incrementCurrentFreeMemorySlot() {
+                mstore(freeMemoryPointerPosition(), add(currentFreeMemorySlot(), 0x20))
             }
 
-            // advances the memory pointer value by 32 bytes (initialy 0x80 + 0x20 => 0xa0)
-            function incrementMemoryPointer() {
-                mstore(getMemoryPointerPosition(), add(getMemoryPointer(), 0x20))
-            }
-
-            // sets memory pointer to a given memory slot, remember default value is 0x80
-            function setMemoryPointer(newSlot) {
-                mstore(getMemoryPointerPosition(), newSlot)
+            function setCurrentFreeMemorySlot(newSlot) {
+                mstore(freeMemoryPointerPosition(), newSlot)
             }
 
             /* -------------- EMIT EVENTS HELPER FUNCTIONS -------------- */

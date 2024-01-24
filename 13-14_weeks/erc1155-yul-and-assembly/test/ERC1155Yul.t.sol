@@ -277,10 +277,10 @@ contract ERC1155YulTest is Test {
         //get URI
         string memory uriReturned = token.uri(1);
         assertEq(uriReturned, "");
-        token.setURI("Test");
+        token.setURI("https://ethereum.stackexchange.com/questions/149768/error-hh210-redefinition-of-task-verify-failed-unsupported-operation-adding-po");
         //get URI
         uriReturned = token.uri(1);
-        assertEq(uriReturned, "Test");
+        assertEq(uriReturned, "https://ethereum.stackexchange.com/questions/149768/error-hh210-redefinition-of-task-verify-failed-unsupported-operation-adding-po");
     }
 
     // ------------------------------------------------- //
