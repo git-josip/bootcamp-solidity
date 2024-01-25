@@ -219,7 +219,7 @@ object "ERC1155Yul" {
             
             // ---------------------------------------------------------------- //
             // ------------------------ setURI(string) ------------------------ //
-            // same uri for all events. uri url should be parametirzed so clients can change id param inurl to get uri for token id.
+            // same uri for all events. uri url should be parametirzed so clients can change id param in url to get uri for token id.
             // https://docs.openzeppelin.com/contracts/4.x/api/token/erc1155#ERC1155-_setURI-string-
             // https://docs.openzeppelin.com/contracts/4.x/api/token/erc1155#ERC1155-uri-uint256-
             // https://docs.openzeppelin.com/contracts/4.x/api/token/erc1155#IERC1155-URI-string-uint256-
@@ -250,6 +250,10 @@ object "ERC1155Yul" {
                     sstore(add(stringStorageSlot, i), partialString)
                 }
 
+                // https://eips.ethereum.org/EIPS/eip-1155#metadata
+                // The URI value allows for ID substitution by clients. If the string {id} exists in any URI, clients MUST replace this with the actual token ID in hexadecimal form. 
+                // This allows for a large number of tokens to use the same on-chain string by defining a URI once, for that large number of tokens.
+                // as event needs to contain id, we just put 0 here, it will be same any url set, as it is not stored on chain by id
                 emitURI(0)
             }
 
@@ -393,7 +397,7 @@ object "ERC1155Yul" {
                 log3(0, 0x20, signatureHash, owner, operator)
             }
     
-            function emitURI(id) {
+            function emitURI(tokenId) {
                 // keccak256 of "URI(string,uint256)"
                 let signatureHash := 0x6bb7ff708619ba0610cba295a58592e0451dee2622938c8755667688daf3529b
                 
@@ -420,7 +424,7 @@ object "ERC1155Yul" {
                     incrementCurrentFreeMemorySlot()
                 }
 
-                log2(startOfMemory, currentFreeMemorySlot(), signatureHash, id)
+                log2(startOfMemory, currentFreeMemorySlot(), signatureHash, tokenId)
             }
 
             /* -------- HELPER FUNCTIONS FOR CALLDATA DECODING  --------- */
