@@ -4,7 +4,11 @@
 
 object "ERC1155Yul" {   
     /**
-     * @dev Constructor
+     * @dev 
+     * The single "code" node is the executable code of the object.
+     * Every (other) named object or data section is serialized and
+     * made accessible to the special built-in functions datacopy / dataoffset / datasize
+     * The current object, sub-objects and data items inside the current object are in scope.
      */
     code {
         // base constructor
