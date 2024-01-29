@@ -4,14 +4,10 @@
 
 object "ERC1155Yul" {   
     /**
-     * @dev 
-     * The single "code" node is the executable code of the object.
-     * Every (other) named object or data section is serialized and
-     * made accessible to the special built-in functions datacopy / dataoffset / datasize
-     * The current object, sub-objects and data items inside the current object are in scope.
+     * @dev return runtime code
      */
     code {
-        // base constructor
+        // return contract runtimecode
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
