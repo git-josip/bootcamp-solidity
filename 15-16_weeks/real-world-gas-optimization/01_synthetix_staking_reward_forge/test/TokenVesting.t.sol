@@ -96,6 +96,11 @@ contract TokenVestingTest is Test {
         assertEq(token4.balanceOf(address(tokenVesting)), 1_000_000 ether);
 
         assertEq(tokenVesting.owner(), owner);
+
+        tokenVesting.addToken(address(token1));
+        tokenVesting.addToken(address(token2));
+        tokenVesting.addToken(address(token3));
+        tokenVesting.addToken(address(token4));
     }
 
     function test_revoke() public {

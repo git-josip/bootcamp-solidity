@@ -4,11 +4,12 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 struct TokenState {
+    uint16 index;
     uint128 released;  // uin128 suports up to 340282366920938463463374607431768211456, 
                        // and if divided by 1e18 this is 340282366920938487808 tokens, which is suitable for any normal vesting usage 
-    bool revoked;
 }
 
 /**
@@ -24,11 +25,13 @@ contract TokenVesting is Ownable {
     // cliff period of a year and a duration of four years, are safe to use.
     // solhint-disable not-rely-on-time
     using SafeERC20 for IERC20;
+    using BitMaps for BitMaps.BitMap;
 
     event TokensReleased(address token, uint256 amount);
     event TokenVestingRevoked(address token);
 
     mapping(address => TokenState) private tokenStates;
+    BitMaps.BitMap private tokenRevocation;
 
     // beneficiary of tokens after they are released
     address private _beneficiary;
@@ -38,7 +41,7 @@ contract TokenVesting is Ownable {
     uint256 private _start;
     uint256 private _duration;
     bool private _revocable;
-
+    uint16 private numberOfTokens;
 
     /**
      * @dev Creates a vesting contract that vests its balance of any ERC20 token to the
@@ -114,10 +117,24 @@ contract TokenVesting is Ownable {
     }
 
     /**
+     * @dev add vesting token
+     */
+    function addToken(address token) public onlyOwner {
+        require(tokenStates[token].index == 0);
+
+        ++numberOfTokens;
+        tokenStates[token] = TokenState({
+            index: numberOfTokens,
+            released: 0
+        });
+        assert(tokenStates[token].index == numberOfTokens);
+    }
+
+    /**
      * @return true if the token is revoked.
      */
     function revoked(address token) public view returns (bool) {
-        return tokenStates[token].revoked;
+        return tokenRevocation.get(tokenStates[token].index);
     }
 
     /**
@@ -145,14 +162,14 @@ contract TokenVesting is Ownable {
         require(_revocable, "TokenVesting: cannot revoke");
 
         TokenState storage tokenState = tokenStates[address(token)];
-        require(!tokenState.revoked, "TokenVesting: token already revoked");
+        require(!tokenRevocation.get(tokenState.index), "TokenVesting: token already revoked");
 
         uint256 balance = token.balanceOf(address(this));
 
         uint256 unreleased = _releasableAmount(token);
         uint256 refund = balance - unreleased;
 
-        tokenState.revoked = true;
+        tokenRevocation.setTo(tokenState.index, true);
 
         token.safeTransfer(owner(), refund);
 
@@ -168,11 +185,11 @@ contract TokenVesting is Ownable {
     function emergencyRevoke(IERC20 token) public onlyOwner {
         require(_revocable, "TokenVesting: cannot revoke");
         TokenState storage tokenState = tokenStates[address(token)];
-        require(!tokenState.revoked, "TokenVesting: token already revoked");
+        require(!tokenRevocation.get(tokenState.index), "TokenVesting: token already revoked");
 
         uint256 balance = token.balanceOf(address(this));
 
-        tokenState.revoked = true;
+        tokenRevocation.setTo(tokenState.index, true);
 
         token.safeTransfer(owner(), balance);
 
@@ -198,7 +215,7 @@ contract TokenVesting is Ownable {
 
         if (block.timestamp < _cliff) {
             return 0;
-        } else if (block.timestamp >= (_start + _duration) || tokenState.revoked) {
+        } else if (block.timestamp >= (_start + _duration) || tokenRevocation.get(tokenState.index)) {
             return totalBalance;
         } else {
             return (totalBalance * (block.timestamp - _start)) / _duration;
