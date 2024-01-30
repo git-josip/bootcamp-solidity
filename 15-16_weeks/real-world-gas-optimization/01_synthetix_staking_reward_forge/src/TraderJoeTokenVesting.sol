@@ -5,6 +5,12 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+struct TokenState {
+    uint128 released;  // uin128 suports up to 340282366920938463463374607431768211456, 
+                       // and if divided by 1e18 this is 340282366920938487808 tokens, which is suitable for any normal vesting usage 
+    bool revoked;
+}
+
 /**
  * @title TokenVesting
  * @dev A token holder contract that can release its token balance gradually like a
@@ -22,6 +28,8 @@ contract TokenVesting is Ownable {
     event TokensReleased(address token, uint256 amount);
     event TokenVestingRevoked(address token);
 
+    mapping(address => TokenState) private tokenStates;
+
     // beneficiary of tokens after they are released
     address private _beneficiary;
 
@@ -29,11 +37,8 @@ contract TokenVesting is Ownable {
     uint256 private _cliff;
     uint256 private _start;
     uint256 private _duration;
-
     bool private _revocable;
 
-    mapping(address => uint256) private _released;
-    mapping(address => bool) private _revoked;
 
     /**
      * @dev Creates a vesting contract that vests its balance of any ERC20 token to the
@@ -105,14 +110,14 @@ contract TokenVesting is Ownable {
      * @return the amount of the token released.
      */
     function released(address token) public view returns (uint256) {
-        return _released[token];
+        return tokenStates[token].released;
     }
 
     /**
      * @return true if the token is revoked.
      */
     function revoked(address token) public view returns (bool) {
-        return _revoked[token];
+        return tokenStates[token].revoked;
     }
 
     /**
@@ -121,10 +126,10 @@ contract TokenVesting is Ownable {
      */
     function release(IERC20 token) public {
         uint256 unreleased = _releasableAmount(token);
-
         require(unreleased > 0, "TokenVesting: no tokens are due");
 
-        _released[address(token)] = _released[address(token)] + unreleased;
+        TokenState storage tokenState = tokenStates[address(token)];
+        tokenState.released =  uint128(tokenState.released + unreleased);
 
         token.safeTransfer(_beneficiary, unreleased);
 
@@ -138,14 +143,16 @@ contract TokenVesting is Ownable {
      */
     function revoke(IERC20 token) public onlyOwner {
         require(_revocable, "TokenVesting: cannot revoke");
-        require(!_revoked[address(token)], "TokenVesting: token already revoked");
+
+        TokenState storage tokenState = tokenStates[address(token)];
+        require(!tokenState.revoked, "TokenVesting: token already revoked");
 
         uint256 balance = token.balanceOf(address(this));
 
         uint256 unreleased = _releasableAmount(token);
         uint256 refund = balance - unreleased;
 
-        _revoked[address(token)] = true;
+        tokenState.revoked = true;
 
         token.safeTransfer(owner(), refund);
 
@@ -160,11 +167,12 @@ contract TokenVesting is Ownable {
      */
     function emergencyRevoke(IERC20 token) public onlyOwner {
         require(_revocable, "TokenVesting: cannot revoke");
-        require(!_revoked[address(token)], "TokenVesting: token already revoked");
+        TokenState storage tokenState = tokenStates[address(token)];
+        require(!tokenState.revoked, "TokenVesting: token already revoked");
 
         uint256 balance = token.balanceOf(address(this));
 
-        _revoked[address(token)] = true;
+        tokenState.revoked = true;
 
         token.safeTransfer(owner(), balance);
 
@@ -176,7 +184,7 @@ contract TokenVesting is Ownable {
      * @param token ERC20 token which is being vested
      */
     function _releasableAmount(IERC20 token) private view returns (uint256) {
-        return _vestedAmount(token) - _released[address(token)];
+        return _vestedAmount(token) - tokenStates[address(token)].released;
     }
 
     /**
@@ -185,11 +193,12 @@ contract TokenVesting is Ownable {
      */
     function _vestedAmount(IERC20 token) private view returns (uint256) {
         uint256 currentBalance = token.balanceOf(address(this));
-        uint256 totalBalance = currentBalance + _released[address(token)];
+        TokenState storage tokenState = tokenStates[address(token)];
+        uint256 totalBalance = currentBalance + tokenState.released;
 
         if (block.timestamp < _cliff) {
             return 0;
-        } else if (block.timestamp >= (_start + _duration) || _revoked[address(token)]) {
+        } else if (block.timestamp >= (_start + _duration) || tokenState.revoked) {
             return totalBalance;
         } else {
             return (totalBalance * (block.timestamp - _start)) / _duration;
