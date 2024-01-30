@@ -5,7 +5,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {StakingRewards} from "../src/StakingRewards.sol";
 import {Test, console} from "forge-std/Test.sol";
-import {Counter} from "../src/Counter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface TestTokenERC20 is IERC20 {
@@ -140,6 +139,14 @@ contract StakingRewardTest is Test {
         stakingRewards.notifyRewardAmount(100_000 ether);
     }
 
+    // function test_StakeZeroAmt() public {
+    //     vm.startPrank(user2);
+    //     stakingRewards.stake(0);
+
+    //     vm.startPrank(owner);
+    //     stakingRewards.notifyRewardAmount(100_000 ether);
+    // }
+
     function test_WithdrawUser2(uint256 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user2);
         vm.assume(_amount > 1000e18);
@@ -157,6 +164,25 @@ contract StakingRewardTest is Test {
         vm.warp(5 days);
         vm.startPrank(user2);
         stakingRewards.withdraw(amount - 800e18);
+    }
+
+    function test_WithdrawZeroAmt(uint256 _amount) public {
+        uint256 balance = tokenStaking.balanceOf(user2);
+        vm.assume(_amount > 1000e18);
+        vm.assume(_amount < balance);
+
+        uint256 amount = bound(_amount, 100e18, balance);
+
+        vm.startPrank(user2);
+        tokenStaking.approve(address(stakingRewards), amount);
+        stakingRewards.stake(amount);
+
+        vm.startPrank(owner);
+        stakingRewards.notifyRewardAmount(100_000 ether);
+
+        vm.warp(5 days);
+        vm.startPrank(user2);
+        stakingRewards.withdraw(0);
     }
 
     function test_GetRewardUser2(uint256 _amount) public {

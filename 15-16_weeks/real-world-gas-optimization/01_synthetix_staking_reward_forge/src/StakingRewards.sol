@@ -16,18 +16,16 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
 
     IERC20 public rewardsToken;
     IERC20 public stakingToken;
-    uint256 public periodFinish = 0;
-    uint256 public rewardRate = 0;
-    uint256 public rewardsDuration = 7 days;
-    uint256 public lastUpdateTime;
-    uint256 public rewardPerTokenStored;
     address public rewardsDistribution;
+    uint64 public periodFinish;
+    uint64 public lastUpdateTime;
+    uint64 public rewardPerTokenStored;
+    uint64 public rewardsDuration = 7 days;
 
-
+    uint256 public rewardRate;
+    uint256 private _totalSupply;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
-
-    uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
 
     /* ========== CONSTRUCTOR ========== */
@@ -61,16 +59,16 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
         return _balances[account];
     }
 
-    function lastTimeRewardApplicable() public view returns (uint256) {
-        return block.timestamp < periodFinish ? block.timestamp : periodFinish;
+    function lastTimeRewardApplicable() public view returns (uint64) {
+        return uint64(block.timestamp < periodFinish ? block.timestamp : periodFinish);
     }
 
-    function rewardPerToken() public view returns (uint256) {
+    function rewardPerToken() public view returns (uint64) {
         if (_totalSupply == 0) {
             return rewardPerTokenStored;
         }
 
-        return rewardPerTokenStored + ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / _totalSupply;
+        return uint64(rewardPerTokenStored + ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / _totalSupply);
     }
 
     function earned(address account) public view returns (uint256) {
@@ -84,17 +82,25 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply = _totalSupply + amount;
-        _balances[msg.sender] = _balances[msg.sender] + amount;
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+
+        unchecked {
+            _totalSupply = _totalSupply + amount;
+            _balances[msg.sender] = _balances[msg.sender] + amount;
+        }
+
         emit Staked(msg.sender, amount);
     }
 
     function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
-        _totalSupply = _totalSupply - amount;
-        _balances[msg.sender] = _balances[msg.sender] - amount;
+        uint256 currentBalance = _balances[msg.sender];
+        require(amount <= currentBalance);
+
+        unchecked {
+            _totalSupply = _totalSupply - amount;
+            _balances[msg.sender] = currentBalance - amount;
+        }
+
         stakingToken.safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
     }
@@ -116,11 +122,17 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     function notifyRewardAmount(uint256 reward) external onlyRewardsDistribution updateReward(address(0)) {
-        if (block.timestamp >= periodFinish) {
+        uint256 currentTimestamp = block.timestamp;
+
+        if (currentTimestamp >= periodFinish) {
             rewardRate = reward / rewardsDuration;
         } else {
-            uint256 remaining = periodFinish - block.timestamp;
-            uint256 leftover = remaining * rewardRate;
+            uint256 leftover;
+            unchecked {
+                uint256 remaining = periodFinish - currentTimestamp;
+                leftover = remaining * rewardRate;
+            }
+            
             rewardRate = reward + (leftover / rewardsDuration);
         }
 
@@ -131,8 +143,8 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
         uint balance = rewardsToken.balanceOf(address(this));
         require(rewardRate <= balance / rewardsDuration, "Provided reward too high");
 
-        lastUpdateTime = block.timestamp;
-        periodFinish = block.timestamp + rewardsDuration;
+        lastUpdateTime = uint64(currentTimestamp);
+        periodFinish = uint64(currentTimestamp + rewardsDuration);
         emit RewardAdded(reward);
     }
 
@@ -143,7 +155,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
+    function setRewardsDuration(uint32 _rewardsDuration) external onlyOwner {
         require(
             block.timestamp > periodFinish,
             "Previous rewards period must be complete before changing the duration for the new period"
