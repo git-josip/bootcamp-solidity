@@ -103,3 +103,6 @@
 [submodule "13-14_weeks/erc1155-yul-and-assembly/lib/forge-std"]
 	path = 13-14_weeks/erc1155-yul-and-assembly/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "15-16_weeks/real-world-gas-optimization/01_synthetix_staking_reward_forge/lib/openzeppelin-contracts"]
+	path = 15-16_weeks/real-world-gas-optimization/01_synthetix_staking_reward_forge/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
