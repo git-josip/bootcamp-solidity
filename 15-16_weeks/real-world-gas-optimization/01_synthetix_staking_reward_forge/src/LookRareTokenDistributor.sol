@@ -107,9 +107,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
         uint256 amountTokensToBeMinted;
 
         for (uint256 i = 0; i < _numberPeriods; i++) {
-            amountTokensToBeMinted +=
-                (_rewardsPerBlockForStaking[i] * _periodLengthesInBlocks[i]) +
-                (_rewardsPerBlockForOthers[i] * _periodLengthesInBlocks[i]);
+            amountTokensToBeMinted += (_rewardsPerBlockForStaking[i] * _periodLengthesInBlocks[i]) + (_rewardsPerBlockForOthers[i] * _periodLengthesInBlocks[i]);
 
             stakingPeriod[i] = StakingPeriod({
                 rewardPerBlockForStaking: _rewardsPerBlockForStaking[i],

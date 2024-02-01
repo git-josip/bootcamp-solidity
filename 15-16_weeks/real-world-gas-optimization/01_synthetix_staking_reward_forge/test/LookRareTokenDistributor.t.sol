@@ -7,6 +7,7 @@ import {LookRareTokenDistributor} from "../src/LookRareTokenDistributor.sol";
 import {LooksRareToken} from "../src/LooksRareToken.sol";
 import {Test, console} from "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ILooksRareToken} from "../src/interfaces/ILooksRareToken.sol";
 
 
 contract LookRareTokenDistributorTest is Test {
@@ -15,6 +16,11 @@ contract LookRareTokenDistributorTest is Test {
     address internal owner;
     address internal beneficiary;
 
+    address internal user1;
+    address internal user2;
+    address internal user3;
+    address internal user4;
+
     LooksRareToken looksRareToken;
 
     LookRareTokenDistributor lookRareTokenDistributor;
@@ -22,6 +28,21 @@ contract LookRareTokenDistributorTest is Test {
     function setUp() public {
         beneficiary = vm.addr(1);
         vm.label(beneficiary, "beneficiary");
+
+        beneficiary = vm.addr(1);
+        vm.label(beneficiary, "beneficiary");
+
+        user1 = vm.addr(2);
+        vm.label(user1, "user1");
+
+        user2 = vm.addr(3);
+        vm.label(user2, "user2");
+
+        user3 = vm.addr(4);
+        vm.label(user3, "user3");
+
+        user4 = vm.addr(5);
+        vm.label(user4, "user4");
 
         owner = vm.addr(99);
         vm.label(owner, "owner");
@@ -46,11 +67,14 @@ contract LookRareTokenDistributorTest is Test {
         _rewardsPerBlockForOthers[3] = 8.75  ether;
 
         uint256[] memory _periodLengthesInBlocks =  new uint256[](4);
-        _rewardsPerBlockForOthers[0] = 100;
-        _rewardsPerBlockForOthers[1] = 100;
-        _rewardsPerBlockForOthers[2] = 100;
-        _rewardsPerBlockForOthers[3] = 100;
-    
+        _periodLengthesInBlocks[0] = 100;
+        _periodLengthesInBlocks[1] = 100;
+        _periodLengthesInBlocks[2] = 100;
+        _periodLengthesInBlocks[3] = 100;
+        
+        uint256 nonCirculatingSupply = ILooksRareToken(looksRareToken).SUPPLY_CAP() - ILooksRareToken(looksRareToken).totalSupply();
+        console.log("YYYYYY nonCirculatingSupply: ", nonCirculatingSupply);
+
         /**
          * @notice Constructor
          * @param _looksRareToken LOOKS token address
@@ -64,19 +88,77 @@ contract LookRareTokenDistributorTest is Test {
         lookRareTokenDistributor = new LookRareTokenDistributor(
             address(looksRareToken),
             address(owner),
-            block.number + 1,
+            block.number + 100,
             _rewardsPerBlockForStaking,
             _rewardsPerBlockForOthers,
             _periodLengthesInBlocks,
             4
         );
 
-        assertEq(looksRareToken.balanceOf(owner), 2150 ether);
-
-        // await looksRareToken.connect(admin).transferOwnership(tokenDistributor.address);
-
+        assertEq(looksRareToken.balanceOf(owner), 2250 ether);
         looksRareToken.transferOwnership(address(lookRareTokenDistributor));
         assertEq(looksRareToken.owner(), address(lookRareTokenDistributor));
+
+
+        looksRareToken.transfer(user1, 500 ether);
+        assertEq(looksRareToken.balanceOf(user1), 500 ether);
+        looksRareToken.transfer(user2, 500 ether);
+        assertEq(looksRareToken.balanceOf(user2), 500 ether);
+        looksRareToken.transfer(user3, 500 ether);
+        assertEq(looksRareToken.balanceOf(user3), 500 ether);
+        looksRareToken.transfer(user4, 500 ether);
+        assertEq(looksRareToken.balanceOf(user4), 500 ether);
+
+        vm.startPrank(user1);
+        looksRareToken.approve(address(lookRareTokenDistributor), 1_000_000 ether);
+        lookRareTokenDistributor.deposit(100 ether);
+
+        vm.startPrank(user2);
+        looksRareToken.approve(address(lookRareTokenDistributor), 1_000_000 ether);
+        lookRareTokenDistributor.deposit(100 ether);
+
+        vm.startPrank(user3);
+        looksRareToken.approve(address(lookRareTokenDistributor), 1_000_000 ether);
+        lookRareTokenDistributor.deposit(100 ether);
+
+        vm.startPrank(user4);
+        looksRareToken.approve(address(lookRareTokenDistributor), 1_000_000 ether);
+        lookRareTokenDistributor.deposit(100 ether);
     }
 
+    function testRegularAdminUserInteraction() public {
+        vm.roll(149);
+
+        assertEq(lookRareTokenDistributor.calculatePendingRewards(user1), 360 ether);
+        assertEq(lookRareTokenDistributor.calculatePendingRewards(user2), 360 ether);
+        assertEq(lookRareTokenDistributor.calculatePendingRewards(user3), 360 ether);
+        assertEq(lookRareTokenDistributor.calculatePendingRewards(user4), 360 ether);
+
+        vm.startPrank(user1);
+        lookRareTokenDistributor.harvestAndCompound();
+        lookRareTokenDistributor.withdraw(100 ether);
+        lookRareTokenDistributor.updatePool();
+
+        vm.startPrank(user2);
+        lookRareTokenDistributor.harvestAndCompound();
+        lookRareTokenDistributor.withdraw(100 ether);
+        lookRareTokenDistributor.updatePool();
+
+        vm.startPrank(user3);
+        lookRareTokenDistributor.harvestAndCompound();
+        lookRareTokenDistributor.withdraw(100 ether);
+        lookRareTokenDistributor.updatePool();
+
+        vm.startPrank(user4);
+        lookRareTokenDistributor.harvestAndCompound();
+        lookRareTokenDistributor.withdraw(100 ether);
+        lookRareTokenDistributor.updatePool();
+
+        vm.roll(199);
+        vm.startPrank(user1);
+        lookRareTokenDistributor.withdrawAll();
+        lookRareTokenDistributor.updatePool();
+
+
+    }
 }
