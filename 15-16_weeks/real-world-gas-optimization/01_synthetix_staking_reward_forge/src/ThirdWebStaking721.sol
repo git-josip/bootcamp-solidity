@@ -7,8 +7,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./eip/interface/IERC721.sol";
 import "./interfaces/IStaking721.sol";
+import "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 abstract contract Staking721 is ReentrancyGuard, IStaking721 {
+    using BitMaps for BitMaps.BitMap;
+
     /*///////////////////////////////////////////////////////////////
                             State variables / Mappings
     //////////////////////////////////////////////////////////////*/
@@ -29,7 +32,8 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
     address[] public stakersArray;
 
     ///@dev Mapping from token-id to whether it is indexed or not.
-    mapping(uint256 => bool) public isIndexed;
+    BitMaps.BitMap private isIndexed;
+    // mapping(uint256 => bool) public isIndexed;
 
     ///@dev Mapping from staker address to Staker struct. See {struct IStaking721.Staker}.
     mapping(address => Staker) public stakers;
@@ -140,17 +144,28 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
         uint256 indexedTokenCount = _indexedTokens.length;
         uint256 stakerTokenCount = 0;
 
-        for (uint256 i = 0; i < indexedTokenCount; i++) {
+        for (uint256 i = 0; i < indexedTokenCount;) {
             _isStakerToken[i] = stakerAddress[_indexedTokens[i]] == _staker;
-            if (_isStakerToken[i]) stakerTokenCount += 1;
+            if (_isStakerToken[i]) { unchecked { ++stakerTokenCount; }}
+
+            unchecked {
+                ++i;
+            }
         }
 
         _tokensStaked = new uint256[](stakerTokenCount);
         uint256 count = 0;
-        for (uint256 i = 0; i < indexedTokenCount; i++) {
+        for (uint256 i = 0; i < indexedTokenCount;) {
             if (_isStakerToken[i]) {
                 _tokensStaked[count] = _indexedTokens[i];
-                count += 1;
+
+                unchecked {
+                    ++count;
+                }
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
@@ -176,23 +191,28 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
 
         address _stakingToken = stakingToken;
 
-        if (stakers[_stakeMsgSender()].amountStaked > 0) {
+        Staker storage currentStaker = stakers[_stakeMsgSender()];
+        if (currentStaker.amountStaked > 0) {
             _updateUnclaimedRewardsForStaker(_stakeMsgSender());
         } else {
             stakersArray.push(_stakeMsgSender());
-            stakers[_stakeMsgSender()].timeOfLastUpdate = uint128(block.timestamp);
-            stakers[_stakeMsgSender()].conditionIdOflastUpdate = nextConditionId - 1;
+            currentStaker.timeOfLastUpdate = uint128(block.timestamp);
+            currentStaker.conditionIdOflastUpdate = nextConditionId - 1;
         }
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < len;) {
             isStaking = 2;
             IERC721(_stakingToken).safeTransferFrom(_stakeMsgSender(), address(this), _tokenIds[i]);
             isStaking = 1;
 
             stakerAddress[_tokenIds[i]] = _stakeMsgSender();
 
-            if (!isIndexed[_tokenIds[i]]) {
-                isIndexed[_tokenIds[i]] = true;
+            if (!isIndexed.get(_tokenIds[i])) {
+                isIndexed.setTo(_tokenIds[i], true);
                 indexedTokens.push(_tokenIds[i]);
+            }
+
+            unchecked {
+                ++i;
             }
         }
         stakers[_stakeMsgSender()].amountStaked += len;
@@ -213,20 +233,30 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
 
         if (_amountStaked == len) {
             address[] memory _stakersArray = stakersArray;
-            for (uint256 i = 0; i < _stakersArray.length; ++i) {
-                if (_stakersArray[i] == _stakeMsgSender()) {
-                    stakersArray[i] = _stakersArray[_stakersArray.length - 1];
+            uint256 stakerArrayLength = _stakersArray.length;
+            for (uint256 i = 0; i < stakerArrayLength;) {
+                address iterationStaker = _stakersArray[i];
+                if (iterationStaker == _stakeMsgSender()) {
+                    stakersArray[i] = _stakersArray[stakerArrayLength - 1];
                     stakersArray.pop();
                     break;
+                }
+
+                unchecked {
+                    ++i;
                 }
             }
         }
         stakers[_stakeMsgSender()].amountStaked -= len;
 
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < len;) {
             require(stakerAddress[_tokenIds[i]] == _stakeMsgSender(), "Not staker");
             stakerAddress[_tokenIds[i]] = address(0);
             IERC721(_stakingToken).safeTransferFrom(address(this), _stakeMsgSender(), _tokenIds[i]);
+
+            unchecked {
+                ++i;
+            }
         }
 
         emit TokensWithdrawn(_stakeMsgSender(), _tokenIds);
@@ -259,16 +289,19 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
     /// @dev Update unclaimed rewards for a users. Called for every state change for a user.
     function _updateUnclaimedRewardsForStaker(address _staker) internal virtual {
         uint256 rewards = _calculateRewards(_staker);
-        stakers[_staker].unclaimedRewards += rewards;
-        stakers[_staker].timeOfLastUpdate = uint128(block.timestamp);
-        stakers[_staker].conditionIdOflastUpdate = nextConditionId - 1;
+        Staker storage currentStaker = stakers[_staker];
+        currentStaker.unclaimedRewards += rewards;
+        currentStaker.timeOfLastUpdate = uint128(block.timestamp);
+        currentStaker.conditionIdOflastUpdate = nextConditionId - 1;
     }
 
     /// @dev Set staking conditions.
     function _setStakingCondition(uint256 _timeUnit, uint256 _rewardsPerUnitTime) internal virtual {
         require(_timeUnit != 0, "time-unit can't be 0");
         uint256 conditionId = nextConditionId;
-        nextConditionId += 1;
+        unchecked {
+            ++nextConditionId;
+        }
 
         stakingConditions[conditionId] = StakingCondition({
             timeUnit: _timeUnit,
@@ -289,7 +322,7 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
         uint256 _stakerConditionId = staker.conditionIdOflastUpdate;
         uint256 _nextConditionId = nextConditionId;
 
-        for (uint256 i = _stakerConditionId; i < _nextConditionId; i += 1) {
+        for (uint256 i = _stakerConditionId; i < _nextConditionId;) {
             StakingCondition memory condition = stakingConditions[i];
 
             uint256 startTime = i != _stakerConditionId ? condition.startTimestamp : staker.timeOfLastUpdate;
@@ -302,6 +335,10 @@ abstract contract Staking721 is ReentrancyGuard, IStaking721 {
             (bool noOverflowSum, uint256 rewardsSum) = SafeMath.tryAdd(_rewards, rewardsProduct / condition.timeUnit);
 
             _rewards = noOverflowProduct && noOverflowSum ? rewardsSum : _rewards;
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
