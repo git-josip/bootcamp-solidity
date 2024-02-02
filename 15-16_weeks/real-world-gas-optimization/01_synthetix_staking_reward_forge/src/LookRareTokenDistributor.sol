@@ -18,7 +18,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
     struct StakingPeriod {
         uint256 rewardPerBlockForStaking;
         uint256 rewardPerBlockForOthers;
-        uint256 periodLengthInBlock;
+        uint32 periodLengthInBlock;
     }
 
     struct UserInfo {
@@ -29,30 +29,30 @@ contract LookRareTokenDistributor is ReentrancyGuard {
     // Precision factor for calculating rewards
     uint256 public constant PRECISION_FACTOR = 10**12;
 
+    // Number of reward periods
+    uint16 public immutable NUMBER_PERIODS;
+    
+    // Current phase for rewards
+    uint16 public currentPhase;
+
     ILooksRareToken public immutable looksRareToken;
 
     address public immutable tokenSplitter;
 
-    // Number of reward periods
-    uint256 public immutable NUMBER_PERIODS;
-
     // Block number when rewards start
-    uint256 public immutable START_BLOCK;
-
-    // Accumulated tokens per share
-    uint256 public accTokenPerShare;
-
-    // Current phase for rewards
-    uint256 public currentPhase;
+    uint32 public immutable START_BLOCK;
 
     // Block number when rewards end
-    uint256 public endBlock;
+    uint32 public endBlock;
 
     // Block number of the last update
-    uint256 public lastRewardBlock;
+    uint32 public lastRewardBlock;
 
     // Tokens distributed per block for other purposes (team + treasury + trading rewards)
     uint256 public rewardPerBlockForOthers;
+
+    // Accumulated tokens per share
+    uint256 public accTokenPerShare;
 
     // Tokens distributed per block for staking
     uint256 public rewardPerBlockForStaking;
@@ -87,11 +87,11 @@ contract LookRareTokenDistributor is ReentrancyGuard {
     constructor(
         address _looksRareToken,
         address _tokenSplitter,
-        uint256 _startBlock,
+        uint32 _startBlock,
         uint256[] memory _rewardsPerBlockForStaking,
         uint256[] memory _rewardsPerBlockForOthers,
-        uint256[] memory _periodLengthesInBlocks,
-        uint256 _numberPeriods
+        uint32[] memory _periodLengthesInBlocks,
+        uint16 _numberPeriods
     ) {
         require(
             (_periodLengthesInBlocks.length == _numberPeriods) &&
@@ -106,7 +106,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
 
         uint256 amountTokensToBeMinted;
 
-        for (uint256 i = 0; i < _numberPeriods; i++) {
+        for (uint256 i = 0; i < _numberPeriods;) {
             amountTokensToBeMinted += (_rewardsPerBlockForStaking[i] * _periodLengthesInBlocks[i]) + (_rewardsPerBlockForOthers[i] * _periodLengthesInBlocks[i]);
 
             stakingPeriod[i] = StakingPeriod({
@@ -114,6 +114,10 @@ contract LookRareTokenDistributor is ReentrancyGuard {
                 rewardPerBlockForOthers: _rewardsPerBlockForOthers[i],
                 periodLengthInBlock: _periodLengthesInBlocks[i]
             });
+
+            unchecked {
+                ++i;
+            }
         }
 
         require(amountTokensToBeMinted == nonCirculatingSupply, "Distributor: Wrong reward parameters");
@@ -148,16 +152,18 @@ contract LookRareTokenDistributor is ReentrancyGuard {
 
         uint256 pendingRewards;
 
+        UserInfo memory userInfoDetails = userInfo[msg.sender];
+
         // If not new deposit, calculate pending rewards (for auto-compounding)
-        if (userInfo[msg.sender].amount > 0) {
+        if (userInfoDetails.amount > 0) {
             pendingRewards =
-                ((userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR) -
-                userInfo[msg.sender].rewardDebt;
+                ((userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR) -
+                userInfoDetails.rewardDebt;
         }
 
         // Adjust user information
         userInfo[msg.sender].amount += (amount + pendingRewards);
-        userInfo[msg.sender].rewardDebt = (userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR;
+        userInfo[msg.sender].rewardDebt = (userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR;
 
         // Increase totalAmountStaked
         totalAmountStaked += (amount + pendingRewards);
@@ -172,9 +178,11 @@ contract LookRareTokenDistributor is ReentrancyGuard {
         // Update pool information
         _updatePool();
 
+        UserInfo memory userInfoDetails = userInfo[msg.sender];
+
         // Calculate pending rewards
-        uint256 pendingRewards = ((userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR) -
-            userInfo[msg.sender].rewardDebt;
+        uint256 pendingRewards = ((userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR) -
+            userInfoDetails.rewardDebt;
 
         // Return if no pending rewards
         if (pendingRewards == 0) {
@@ -189,7 +197,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
         totalAmountStaked += pendingRewards;
 
         // Recalculate reward debt based on new user amount
-        userInfo[msg.sender].rewardDebt = (userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR;
+        userInfo[msg.sender].rewardDebt = (userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR;
 
         emit Compound(msg.sender, pendingRewards);
     }
@@ -206,8 +214,10 @@ contract LookRareTokenDistributor is ReentrancyGuard {
      * @param amount amount to withdraw
      */
     function withdraw(uint256 amount) external nonReentrant {
+        UserInfo memory userInfoDetails = userInfo[msg.sender];
+
         require(
-            (userInfo[msg.sender].amount >= amount) && (amount > 0),
+            (userInfoDetails.amount >= amount) && (amount > 0),
             "Withdraw: Amount must be > 0 or lower than user balance"
         );
 
@@ -215,11 +225,11 @@ contract LookRareTokenDistributor is ReentrancyGuard {
         _updatePool();
 
         // Calculate pending rewards
-        uint256 pendingRewards = ((userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR) -
-            userInfo[msg.sender].rewardDebt;
+        uint256 pendingRewards = ((userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR) -
+        userInfoDetails.rewardDebt;
 
         // Adjust user information
-        userInfo[msg.sender].amount = userInfo[msg.sender].amount + pendingRewards - amount;
+        userInfo[msg.sender].amount = userInfoDetails.amount + pendingRewards - amount;
         userInfo[msg.sender].rewardDebt = (userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR;
 
         // Adjust total amount staked
@@ -235,19 +245,21 @@ contract LookRareTokenDistributor is ReentrancyGuard {
      * @notice Withdraw all staked tokens and collect tokens
      */
     function withdrawAll() external nonReentrant {
-        require(userInfo[msg.sender].amount > 0, "Withdraw: Amount must be > 0");
+        UserInfo memory userInfoDetails = userInfo[msg.sender];
+
+        require(userInfoDetails.amount > 0, "Withdraw: Amount must be > 0");
 
         // Update pool
         _updatePool();
 
         // Calculate pending rewards and amount to transfer (to the sender)
-        uint256 pendingRewards = ((userInfo[msg.sender].amount * accTokenPerShare) / PRECISION_FACTOR) -
-            userInfo[msg.sender].rewardDebt;
+        uint256 pendingRewards = ((userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR) -
+            userInfoDetails.rewardDebt;
 
-        uint256 amountToTransfer = userInfo[msg.sender].amount + pendingRewards;
+        uint256 amountToTransfer = userInfoDetails.amount + pendingRewards;
 
         // Adjust total amount staked
-        totalAmountStaked = totalAmountStaked - userInfo[msg.sender].amount;
+        totalAmountStaked = totalAmountStaked - userInfoDetails.amount;
 
         // Adjust user information
         userInfo[msg.sender].amount = 0;
@@ -265,6 +277,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
      * @return Pending rewards
      */
     function calculatePendingRewards(address user) external view returns (uint256) {
+        UserInfo memory userInfoDetails = userInfo[user];
         if ((block.number > lastRewardBlock) && (totalAmountStaked != 0)) {
             uint256 multiplier = _getMultiplier(lastRewardBlock, block.number);
 
@@ -276,21 +289,22 @@ contract LookRareTokenDistributor is ReentrancyGuard {
             // Check whether to adjust multipliers and reward per block
             while ((block.number > adjustedEndBlock) && (adjustedCurrentPhase < (NUMBER_PERIODS - 1))) {
                 // Update current phase
-                adjustedCurrentPhase++;
+                ++adjustedCurrentPhase;
 
+                StakingPeriod memory stakingPeriodCurrPhase = stakingPeriod[adjustedCurrentPhase];
                 // Update rewards per block
-                uint256 adjustedRewardPerBlockForStaking = stakingPeriod[adjustedCurrentPhase].rewardPerBlockForStaking;
+                uint256 adjustedRewardPerBlockForStaking = stakingPeriodCurrPhase.rewardPerBlockForStaking;
 
                 // Calculate adjusted block number
                 uint256 previousEndBlock = adjustedEndBlock;
 
                 // Update end block
-                adjustedEndBlock = previousEndBlock + stakingPeriod[adjustedCurrentPhase].periodLengthInBlock;
+                adjustedEndBlock = previousEndBlock + stakingPeriodCurrPhase.periodLengthInBlock;
 
                 // Calculate new multiplier
                 uint256 newMultiplier = (block.number <= adjustedEndBlock)
                     ? (block.number - previousEndBlock)
-                    : stakingPeriod[adjustedCurrentPhase].periodLengthInBlock;
+                    : stakingPeriodCurrPhase.periodLengthInBlock;
 
                 // Adjust token rewards for staking
                 tokenRewardForStaking += (newMultiplier * adjustedRewardPerBlockForStaking);
@@ -300,9 +314,9 @@ contract LookRareTokenDistributor is ReentrancyGuard {
                 (tokenRewardForStaking * PRECISION_FACTOR) /
                 totalAmountStaked;
 
-            return (userInfo[user].amount * adjustedTokenPerShare) / PRECISION_FACTOR - userInfo[user].rewardDebt;
+            return (userInfoDetails.amount * adjustedTokenPerShare) / PRECISION_FACTOR - userInfoDetails.rewardDebt;
         } else {
-            return (userInfo[user].amount * accTokenPerShare) / PRECISION_FACTOR - userInfo[user].rewardDebt;
+            return (userInfoDetails.amount * accTokenPerShare) / PRECISION_FACTOR - userInfoDetails.rewardDebt;
         }
     }
 
@@ -315,7 +329,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
         }
 
         if (totalAmountStaked == 0) {
-            lastRewardBlock = block.number;
+            lastRewardBlock = uint32(block.number);
             return;
         }
 
@@ -328,13 +342,18 @@ contract LookRareTokenDistributor is ReentrancyGuard {
 
         // Check whether to adjust multipliers and reward per block
         while ((block.number > endBlock) && (currentPhase < (NUMBER_PERIODS - 1))) {
+            // Update current phase
+            ++currentPhase;
+            
+            StakingPeriod memory currentStakingPeriod = stakingPeriod[currentPhase];
+
             // Update rewards per block
-            _updateRewardsPerBlock(endBlock);
+            _updateRewardsPerBlock(endBlock, currentStakingPeriod);
 
             uint256 previousEndBlock = endBlock;
 
             // Adjust the end block
-            endBlock += stakingPeriod[currentPhase].periodLengthInBlock;
+            endBlock += currentStakingPeriod.periodLengthInBlock;
 
             // Adjust multiplier to cover the missing periods with other lower inflation schedule
             uint256 newMultiplier = _getMultiplier(previousEndBlock, block.number);
@@ -357,7 +376,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
 
         // Update last reward block only if it wasn't updated after or at the end block
         if (lastRewardBlock <= endBlock) {
-            lastRewardBlock = block.number;
+            lastRewardBlock = uint32(block.number);
         }
     }
 
@@ -365,13 +384,10 @@ contract LookRareTokenDistributor is ReentrancyGuard {
      * @notice Update rewards per block
      * @dev Rewards are halved by 2 (for staking + others)
      */
-    function _updateRewardsPerBlock(uint256 _newStartBlock) internal {
-        // Update current phase
-        currentPhase++;
-
+    function _updateRewardsPerBlock(uint256 _newStartBlock, StakingPeriod memory currentStakingPeriod) internal {
         // Update rewards per block
-        rewardPerBlockForStaking = stakingPeriod[currentPhase].rewardPerBlockForStaking;
-        rewardPerBlockForOthers = stakingPeriod[currentPhase].rewardPerBlockForOthers;
+        rewardPerBlockForStaking = currentStakingPeriod.rewardPerBlockForStaking;
+        rewardPerBlockForOthers = currentStakingPeriod.rewardPerBlockForOthers;
 
         emit NewRewardsPerBlock(currentPhase, _newStartBlock, rewardPerBlockForStaking, rewardPerBlockForOthers);
     }

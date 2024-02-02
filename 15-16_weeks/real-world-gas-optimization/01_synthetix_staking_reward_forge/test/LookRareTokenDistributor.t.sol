@@ -66,7 +66,7 @@ contract LookRareTokenDistributorTest is Test {
         _rewardsPerBlockForOthers[2] = 17.5 ether;
         _rewardsPerBlockForOthers[3] = 8.75  ether;
 
-        uint256[] memory _periodLengthesInBlocks =  new uint256[](4);
+        uint32[] memory _periodLengthesInBlocks =  new uint32[](4);
         _periodLengthesInBlocks[0] = 100;
         _periodLengthesInBlocks[1] = 100;
         _periodLengthesInBlocks[2] = 100;
@@ -88,7 +88,7 @@ contract LookRareTokenDistributorTest is Test {
         lookRareTokenDistributor = new LookRareTokenDistributor(
             address(looksRareToken),
             address(owner),
-            block.number + 100,
+            uint32(block.number) + 100,
             _rewardsPerBlockForStaking,
             _rewardsPerBlockForOthers,
             _periodLengthesInBlocks,
