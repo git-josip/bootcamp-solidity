@@ -42,7 +42,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
         address _rewardsDistribution,
         address _rewardsToken,
         address _stakingToken
-    ) {
+    ) payable {
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
         rewardsDistribution = _rewardsDistribution;

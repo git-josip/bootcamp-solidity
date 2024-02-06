@@ -59,7 +59,7 @@ contract TokenVesting is Ownable {
         uint256 cliffDuration,
         uint256 duration,
         bool revocable
-    ) Ownable() {
+    ) payable Ownable() {
         require(beneficiary != address(0), "TokenVesting: beneficiary is the zero address");
         // solhint-disable-next-line max-line-length
         require(cliffDuration <= duration, "TokenVesting: cliff is longer than duration");

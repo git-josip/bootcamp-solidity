@@ -92,7 +92,7 @@ contract LookRareTokenDistributor is ReentrancyGuard {
         uint256[] memory _rewardsPerBlockForOthers,
         uint32[] memory _periodLengthesInBlocks,
         uint16 _numberPeriods
-    ) {
+    ) payable {
         require(
             (_periodLengthesInBlocks.length == _numberPeriods) &&
                 (_rewardsPerBlockForStaking.length == _numberPeriods) &&
