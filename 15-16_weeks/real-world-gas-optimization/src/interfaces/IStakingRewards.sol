@@ -6,15 +6,15 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IStakingRewards {
     // Views
 
-    function balanceOf(address account) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint128);
 
-    function earned(address account) external view returns (uint256);
+    function earned(address account) external view returns (uint128);
 
     function getRewardForDuration() external view returns (uint256);
 
     function lastTimeRewardApplicable() external view returns (uint64);
 
-    function rewardPerToken() external view returns (uint64);
+    function rewardPerToken() external view returns (uint128);
 
     function rewardsDistribution() external view returns (address);
 
@@ -28,7 +28,7 @@ interface IStakingRewards {
 
     function getReward() external;
 
-    function stake(uint256 amount) external;
+    function stake(uint128 amount) external;
 
-    function withdraw(uint256 amount) external;
+    function withdraw(uint128 amount) external;
 }

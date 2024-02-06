@@ -34,6 +34,14 @@ In order to achieve this we need to have token index sequentially generated and 
 `BitMaps.BitMap private tokenRevocation` storage variable has been introduced where revoked token info is saved. In order to support this we
 have added `addToken` method where `owner` adds token definition to contract and then index is assigned.
 
+BitMaps pack 256 booleans across each bit of a single 256-bit slot of uint256 type. Hence, booleans corresponding to 256 sequential indices would only consume a single slot, unlike the regular bool which would consume an entire slot for a single value.
+
+This results in gas savings in two ways:
+
+- Setting a zero value to non-zero only once every 256 times 
+- Accessing the same warm slot for every 256 sequential indices
+
+
 ## Gas report
 
 ### Original

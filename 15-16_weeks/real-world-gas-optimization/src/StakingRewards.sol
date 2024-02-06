@@ -8,6 +8,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IStakingRewards.sol";
 import "./Pausable.sol";
 
+    struct UserState {
+        uint256 userRewardPerTokenPaid;
+        uint128 reward;
+        uint128 balance;
+    }
+
 // https://docs.synthetix.io/contracts/source/contracts/stakingrewards
 contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -19,14 +25,16 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
     address public rewardsDistribution;
     uint64 public periodFinish;
     uint64 public lastUpdateTime;
-    uint64 public rewardPerTokenStored;
+    // ---------------------------------------- ^ slot i
+    uint128 public rewardPerTokenStored;
     uint64 public rewardsDuration = 7 days;
-
+    // ---------------------------------------- ^ slot i + 1
     uint256 public rewardRate;
+    // ---------------------------------------- ^ slot i + 2
     uint256 private _totalSupply;
-    mapping(address => uint256) public userRewardPerTokenPaid;
-    mapping(address => uint256) public rewards;
-    mapping(address => uint256) private _balances;
+    // ---------------------------------------- ^ slot i + 3
+    mapping(address => UserState) public userStates;
+    // ---------------------------------------- ^ slot i + 4
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -55,24 +63,25 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
         return _totalSupply;
     }
 
-    function balanceOf(address account) external view returns (uint256) {
-        return _balances[account];
+    function balanceOf(address account) external view returns (uint128) {
+        return userStates[account].balance;
     }
 
     function lastTimeRewardApplicable() public view returns (uint64) {
         return uint64(block.timestamp < periodFinish ? block.timestamp : periodFinish);
     }
 
-    function rewardPerToken() public view returns (uint64) {
+    function rewardPerToken() public view returns (uint128) {
         if (_totalSupply == 0) {
             return rewardPerTokenStored;
         }
 
-        return uint64(rewardPerTokenStored + ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / _totalSupply);
+        return uint128(rewardPerTokenStored + ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / _totalSupply);
     }
 
-    function earned(address account) public view returns (uint256) {
-        return (_balances[account] * (rewardPerToken() - userRewardPerTokenPaid[account])/1e18) + rewards[account];
+    function earned(address account) public view returns (uint128) {
+        UserState memory userState = userStates[account];
+        return uint128(userState.balance * (rewardPerToken() - userState.userRewardPerTokenPaid)/1e18) + userState.reward;
     }
 
     function getRewardForDuration() external view returns (uint256) {
@@ -81,24 +90,27 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {
+    function stake(uint128 amount) external nonReentrant notPaused updateReward(msg.sender) {
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
+        UserState storage userState = userStates[msg.sender];
         unchecked {
             _totalSupply = _totalSupply + amount;
-            _balances[msg.sender] = _balances[msg.sender] + amount;
+            userState.balance = userState.balance + amount;
         }
 
         emit Staked(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
-        uint256 currentBalance = _balances[msg.sender];
+    function withdraw(uint128 amount) public nonReentrant updateReward(msg.sender) {
+        UserState storage userState = userStates[msg.sender];
+
+        uint128 currentBalance = userState.balance;
         require(amount <= currentBalance);
 
         unchecked {
             _totalSupply = _totalSupply - amount;
-            _balances[msg.sender] = currentBalance - amount;
+            userState.balance = currentBalance - amount;
         }
 
         stakingToken.safeTransfer(msg.sender, amount);
@@ -106,16 +118,17 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
     }
 
     function getReward() public nonReentrant updateReward(msg.sender) {
-        uint256 reward = rewards[msg.sender];
+        UserState storage userState = userStates[msg.sender];
+        uint256 reward = userState.reward;
         if (reward > 0) {
-            rewards[msg.sender] = 0;
+            userState.reward = 0;
             rewardsToken.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
 
     function exit() external {
-        withdraw(_balances[msg.sender]);
+        withdraw(userStates[msg.sender].balance);
         getReward();
     }
 
@@ -169,9 +182,10 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Pausable {
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
+        UserState storage userState = userStates[account];
         if (account != address(0)) {
-            rewards[account] = earned(account);
-            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+            userState.reward = earned(account);
+            userState.userRewardPerTokenPaid = rewardPerTokenStored;
         }
         _;
     }

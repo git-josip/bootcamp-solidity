@@ -72,12 +72,12 @@ contract StakingRewardTest is Test {
         assertEq(tokenStaking.balanceOf(user2), 100_000 ether);
     }
 
-    function test_StakeUser1(uint256 _amount) public {
+    function test_StakeUser1(uint128 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user1);
         vm.assume(_amount > 100e18);
         vm.assume(_amount < balance);
 
-        uint256 amount = bound(_amount, 100e18, balance);
+        uint128 amount = uint128(bound(_amount, 100e18, balance));
 
         vm.startPrank(user1);
         tokenStaking.approve(address(stakingRewards), amount);
@@ -87,12 +87,12 @@ contract StakingRewardTest is Test {
         stakingRewards.notifyRewardAmount(100_000 ether);
     }
 
-    function test_WithdrawUser1(uint256 _amount) public {
+    function test_WithdrawUser1(uint128 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user1);
         vm.assume(_amount > 1000e18);
         vm.assume(_amount < balance);
 
-        uint256 amount = bound(_amount, 100e18, balance);
+        uint128 amount = uint128(bound(_amount, 100e18, balance));
 
         vm.startPrank(user1);
         tokenStaking.approve(address(stakingRewards), amount);
@@ -106,7 +106,7 @@ contract StakingRewardTest is Test {
         stakingRewards.withdraw(amount - 800e18);
     }
 
-    function test_GetRewardUser1(uint256 _amount) public {
+    function test_GetRewardUser1(uint128 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user1);
         vm.assume(_amount > 1000e18);
         vm.assume(_amount < balance);
@@ -115,7 +115,7 @@ contract StakingRewardTest is Test {
 
         vm.startPrank(user1);
         tokenStaking.approve(address(stakingRewards), amount);
-        stakingRewards.stake(amount);
+        stakingRewards.stake(uint128(amount));
 
         vm.startPrank(owner);
         stakingRewards.notifyRewardAmount(100_000 ether);
@@ -125,7 +125,7 @@ contract StakingRewardTest is Test {
         stakingRewards.getReward();
     }
 
-    function test_StakeUser2(uint256 _amount) public {
+    function test_StakeUser2(uint128 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user2);
         vm.assume(_amount > 100e18);
         vm.assume(_amount < balance);
@@ -133,7 +133,7 @@ contract StakingRewardTest is Test {
         uint256 amount = bound(_amount, 100e18, balance);
         vm.startPrank(user2);
         tokenStaking.approve(address(stakingRewards), amount);
-        stakingRewards.stake(amount);
+        stakingRewards.stake(uint128(amount));
 
         vm.startPrank(owner);
         stakingRewards.notifyRewardAmount(100_000 ether);
@@ -147,7 +147,7 @@ contract StakingRewardTest is Test {
     //     stakingRewards.notifyRewardAmount(100_000 ether);
     // }
 
-    function test_WithdrawUser2(uint256 _amount) public {
+    function test_WithdrawUser2(uint128 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user2);
         vm.assume(_amount > 1000e18);
         vm.assume(_amount < balance);
@@ -156,45 +156,45 @@ contract StakingRewardTest is Test {
 
         vm.startPrank(user2);
         tokenStaking.approve(address(stakingRewards), amount);
-        stakingRewards.stake(amount);
+        stakingRewards.stake(uint128(amount));
 
         vm.startPrank(owner);
         stakingRewards.notifyRewardAmount(100_000 ether);
 
         vm.warp(5 days);
         vm.startPrank(user2);
-        stakingRewards.withdraw(amount - 800e18);
+        stakingRewards.withdraw(uint128(amount - 800e18));
     }
 
-    function test_WithdrawZeroAmt(uint256 _amount) public {
+   function test_WithdrawZeroAmt(uint128 _amount) public {
+       uint256 balance = tokenStaking.balanceOf(user2);
+       vm.assume(_amount > 1000e18);
+       vm.assume(_amount < balance);
+
+       uint256 amount = bound(_amount, 100e18, balance);
+
+       vm.startPrank(user2);
+       tokenStaking.approve(address(stakingRewards), amount);
+       stakingRewards.stake(uint128(amount));
+
+       vm.startPrank(owner);
+       stakingRewards.notifyRewardAmount(100_000 ether);
+
+       vm.warp(5 days);
+       vm.startPrank(user2);
+       stakingRewards.withdraw(0);
+   }
+
+    function test_GetRewardUser2(uint128 _amount) public {
         uint256 balance = tokenStaking.balanceOf(user2);
-        vm.assume(_amount > 1000e18);
         vm.assume(_amount < balance);
+        vm.assume(_amount > 1000e18);
 
         uint256 amount = bound(_amount, 100e18, balance);
 
         vm.startPrank(user2);
         tokenStaking.approve(address(stakingRewards), amount);
-        stakingRewards.stake(amount);
-
-        vm.startPrank(owner);
-        stakingRewards.notifyRewardAmount(100_000 ether);
-
-        vm.warp(5 days);
-        vm.startPrank(user2);
-        stakingRewards.withdraw(0);
-    }
-
-    function test_GetRewardUser2(uint256 _amount) public {
-        uint256 balance = tokenStaking.balanceOf(user2);
-        vm.assume(_amount > 1000e18);
-        vm.assume(_amount < balance);
-
-        uint256 amount = bound(_amount, 100e18, balance);
-
-        vm.startPrank(user2);
-        tokenStaking.approve(address(stakingRewards), amount);
-        stakingRewards.stake(amount);
+        stakingRewards.stake(uint128(amount));
 
         vm.startPrank(owner);
         stakingRewards.notifyRewardAmount(100_000 ether);
