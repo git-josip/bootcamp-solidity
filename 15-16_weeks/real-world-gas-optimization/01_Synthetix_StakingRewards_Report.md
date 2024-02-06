@@ -14,7 +14,7 @@ The code under review can be found in `src` folder. Contract reviewed is [Stakin
 
 ## Gas Optimizations
 
-## [G-01] Optimze storage variables
+## [G-01] Optimize storage variables
 Gas optimization here was focused on optimizing storage variables. 
 
 ### Initial storage variables:
@@ -71,6 +71,15 @@ So initially we are using 9 slots to store current variables.
   - uin128 supports up to `340282366920938463463374607431768211456`, 
     - divided by `1e18` this is `340282366920938487808` tokens, which is suitable for any normal vesting usage
 - also variables are ordered in a way to fits in fewer slots
+
+Struct `UserState` has been introduced so that we only have one `mapping` and not 3 mappings.
+```solidity
+    struct UserState {
+        uint256 userRewardPerTokenPaid;
+        uint128 reward;
+        uint128 balance;
+    }
+```
 
 ## Gas report
 
