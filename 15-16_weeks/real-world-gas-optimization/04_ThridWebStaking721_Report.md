@@ -2,8 +2,9 @@
 
 ## Summary
 
-A token holder contract that can release its token balance gradually like a typical vesting scheme, with a cliff and vesting period. Optionally revocable by the 
-owner.
+This contract allows users to stake their ERC-721 NFTs and get ERC-20 tokens as staking rewards. Contract admin should set the NFT and Reward-token addresses during deployment. These can't be changed later.
+
+Staked NFTs are stored inside the contract and rewards are calculated for the amount of time these NFTs were staked. Admin should maintain adequate balance of reward tokens in the staking-contract. These rewards are then transferred to stakers upon claiming.
 
 ## Scope
 
