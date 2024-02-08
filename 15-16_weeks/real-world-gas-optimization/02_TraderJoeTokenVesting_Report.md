@@ -19,13 +19,11 @@ The code under review can be found in `src` folder. Contract reviewed is [Trader
 Originally `mapping(address => uint256) _released` has been used to store amount released per token address and `mapping(address => bool) private _revoked` to store if token 
 support has been revoked. 
 
-We have introduced new struct `TokenState(uint128 released; bool revoked)` which will be used to store same data in one struct on the same slot.
+We have introduced new struct `TokenState(uint128 released; uint16 index)` which will be used to store _released data in struct with index on the same slot.
 
 `released` type has been changed from `uint256` to `uint128` .  
 `uint128` supports number up to 340282366920938463463374607431768211456, and if divided by 1e18 this is 340282366920938487808 tokens, which is
 340282366920 billions tokens.
-
-Now uin128 and bool are stored on the same slot.
  
 ### [G-02] BitMap was introduced to store revoked info about token
 
