@@ -7,7 +7,7 @@ import {StakeAndGetReward} from "../src/2_StakeAndGetReward.sol";
 import {RewardToken} from "../src/2_RewardToken.sol";
 import {NftStakingToken} from "../src/2_NftStakingToken.sol";
 import {IRewardToken} from "../src/2_RewardToken.sol";
-import {IERC721Receiver} from "openzeppelin/token/ERC721/IERC721Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC1363} from "@payabletoken/contracts/token/ERC1363/IERC1363.sol";
 
