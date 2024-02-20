@@ -133,3 +133,6 @@
 [submodule "17_18_weeks/proxies_part_2/dv_defi_12_climber/lib/solady"]
 	path = 17_18_weeks/proxies_part_2/dv_defi_12_climber/lib/solady
 	url = https://github.com/vectorized/solady
+[submodule "17_18_weeks/proxies_part_2/dv_defi_12_climber/lib/safe-contracts"]
+	path = 17_18_weeks/proxies_part_2/dv_defi_12_climber/lib/safe-contracts
+	url = https://github.com/gnosis/safe-contracts
